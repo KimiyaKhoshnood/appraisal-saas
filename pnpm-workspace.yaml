@@ -1,0 +1,10 @@
+packages:
+  - apps/*
+  - packages/*
+
+# pnpm 11 runs no dependency install scripts unless allowed here (supply-chain hardening).
+allowBuilds:
+  "@prisma/engines": true
+  "@swc/core": true
+  esbuild: true
+  prisma: true

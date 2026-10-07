@@ -26,11 +26,6 @@ export function contrastRatio(a: string, b: string): number {
   return (hi + 0.05) / (lo + 0.05);
 }
 
-/** Text colour the UI renders on top of the primary colour: whichever contrasts more. */
-export function onColor(hex: string): '#ffffff' | '#000000' {
-  return contrastRatio(hex, '#ffffff') >= contrastRatio(hex, '#000000') ? '#ffffff' : '#000000';
-}
-
 export const MIN_CONTRAST = 4.5;
 
 export const LOCALES = ['en', 'fa'] as const;
@@ -49,14 +44,17 @@ export const brandingSchema = z
   })
   .strict()
   .superRefine((b, ctx) => {
-    // A tenant must not be able to make the product unreadable (WCAG AA, 4.5:1).
-    const ratio = contrastRatio(b.primaryColor, onColor(b.primaryColor));
-    if (ratio < MIN_CONTRAST) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['primaryColor'],
-        message: `Text on this colour reaches only ${ratio.toFixed(2)}:1 contrast; at least ${MIN_CONTRAST}:1 is required`,
-      });
+    // The UI puts white text on brand colours (buttons, header) and brand-coloured text on white
+    // (links, accents). A tenant must not be able to make either unreadable: WCAG AA, 4.5:1.
+    for (const key of ['primaryColor', 'secondaryColor'] as const) {
+      const ratio = contrastRatio(b[key], '#ffffff');
+      if (ratio < MIN_CONTRAST) {
+        ctx.addIssue({
+          code: 'custom',
+          path: [key],
+          message: `Contrast with white is ${ratio.toFixed(2)}:1; at least ${MIN_CONTRAST}:1 is required (WCAG AA)`,
+        });
+      }
     }
   });
 

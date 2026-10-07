@@ -91,6 +91,7 @@ export class EvaluationsService {
   async history(employeeId: string): Promise<EvaluationSummaryView[]> {
     const access = TenantContext.requireAccess();
     const me = access.user.id;
+    if (!(await this.org.userExists(employeeId))) throw new NotFoundError('employee', employeeId);
     const allowed =
       employeeId === me || access.permissions.has('evaluation:read-all') || (await this.org.managerOf(employeeId)) === me;
     if (!allowed) throw new NotFoundError('employee', employeeId);

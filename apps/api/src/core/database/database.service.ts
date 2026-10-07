@@ -23,6 +23,10 @@ function setTenantSql(base: PrismaClient, tenantId: string, statementTimeoutMs: 
 export function createClients(opts: DatabaseOptions) {
   const base = new PrismaClient({
     adapter: new PrismaPg({ connectionString: opts.url, max: opts.poolMax }),
+    // Every tenant operation is a (short) transaction, so the wait for a pooled connection is
+    // the queueing time under load; Prisma's 2 s default fails bursts that a 10-connection pool
+    // absorbs fine. Measured in experiment E3.
+    transactionOptions: { maxWait: 10_000, timeout: 15_000 },
   });
 
   const extended = base.$extends({
@@ -113,12 +117,14 @@ export class Database implements OnModuleDestroy {
         await tx.$executeRaw`SELECT set_config('app.tenant_id', ${tenantId}, true),
                                     set_config('statement_timeout', ${String(this.statementTimeoutMs)}, true)`;
         const child = { ...store!, tx };
-        return TenantContext.run(child, () => fn(tx as unknown as Db));
+        // `await` *inside* the scope: Prisma promises are lazy, and a callback that returns one
+        // unawaited would otherwise be executed after the scope ends, outside this transaction.
+        return TenantContext.run(child, async () => await fn(tx as unknown as Db));
       },
       {
         isolationLevel: options.isolationLevel ?? Prisma.TransactionIsolationLevel.ReadCommitted,
-        timeout: options.timeoutMs ?? 10_000,
-        maxWait: 5_000,
+        timeout: options.timeoutMs ?? 15_000,
+        maxWait: 10_000,
       },
     );
   }
@@ -136,9 +142,9 @@ export class Database implements OnModuleDestroy {
           tenantId: null,
           tx,
         };
-        return TenantContext.run(child, () => fn(tx as unknown as Db));
+        return TenantContext.run(child, async () => await fn(tx as unknown as Db));
       },
-      { timeout: 10_000, maxWait: 5_000 },
+      { timeout: 15_000, maxWait: 10_000 },
     );
   }
 

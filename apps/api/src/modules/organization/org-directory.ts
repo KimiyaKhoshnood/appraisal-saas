@@ -14,6 +14,10 @@ export class OrgDirectory {
     private readonly users: UserDirectory,
   ) {}
 
+  userExists(userId: string): Promise<boolean> {
+    return this.users.exists(userId);
+  }
+
   async managerOf(userId: string): Promise<string | null> {
     const p = await this.db.client.employeeProfile.findFirst({ where: { userId }, select: { managerId: true } });
     return p?.managerId ?? null;

@@ -42,6 +42,9 @@ interface TenantSpec {
   policy: EvaluationPolicyOverride;
   departments: string[];
   people: PersonSpec[];
+  cycles: { past: string; current: string };
+  /** Employee whose evaluation is moved one step ahead in the current cycle. */
+  showcase: string;
 }
 
 const ACME: TenantSpec = {
@@ -53,6 +56,8 @@ const ACME: TenantSpec = {
   // Acme: self-assessment AND a single approval before publishing.
   policy: { cycle: 'QUARTERLY', scale: { min: 1, max: 5 }, selfAssessmentRequired: true, approvalRequired: true, approvalStrategy: 'SINGLE', resultVisibility: 'AFTER_PUBLISH' },
   departments: ['Engineering', 'Sales', 'People'],
+  cycles: { past: '2026 Q2', current: '2026 Q3' },
+  showcase: 'eve',
   people: [
     { key: 'ada', email: 'ada@acme.test', fullName: 'Ada Admin', roles: ['TENANT_ADMIN'], department: 'People', jobTitle: 'Head of People' },
     { key: 'hana', email: 'hana@acme.test', fullName: 'Hana Reviewer', roles: ['EMPLOYEE', 'HR'], manager: 'ada', department: 'People', jobTitle: 'HR Partner' },
@@ -75,6 +80,8 @@ const GLOBEX: TenantSpec = {
   // Globex: no self-assessment, no approval; 1–10 scale; employees never see manager results.
   policy: { cycle: 'MONTHLY', scale: { min: 1, max: 10 }, selfAssessmentRequired: false, approvalRequired: false, approvalStrategy: 'SINGLE', resultVisibility: 'MANAGERS_ONLY' },
   departments: ['Operations', 'Fleet'],
+  cycles: { past: 'Tir 1405', current: 'Mehr 1405' },
+  showcase: 'sara',
   people: [
     { key: 'gita', email: 'gita@globex.test', fullName: 'گیتا مدیرسیستم', roles: ['TENANT_ADMIN'], department: 'Operations', jobTitle: 'Operations Director' },
     { key: 'kian', email: 'kian@globex.test', fullName: 'کیان مدیر', roles: ['MANAGER'], manager: 'gita', department: 'Fleet', jobTitle: 'Fleet Manager' },
@@ -168,7 +175,7 @@ async function main() {
     });
 
     // A closed past cycle with published results (trend/analytics data) and an active one.
-    const past = await asUser(tenant, created.adminUserId, () => cycles.create({ name: spec.slug === 'acme' ? '2026 Q2' : 'Shahrivar 1405', startsOn: '2026-04-01' }));
+    const past = await asUser(tenant, created.adminUserId, () => cycles.create({ name: spec.cycles.past, startsOn: '2026-04-01' }));
     await asUser(tenant, created.adminUserId, () => cycles.activate(past.id));
     const scale = spec.policy.scale!;
     const evals = await asUser(tenant, created.adminUserId, () => evaluations.list({ scope: 'all', cycleId: past.id, limit: 100 }));
@@ -188,11 +195,11 @@ async function main() {
     }
     await asUser(tenant, created.adminUserId, () => cycles.close(past.id));
 
-    const current = await asUser(tenant, created.adminUserId, () => cycles.create({ name: spec.slug === 'acme' ? '2026 Q3' : 'Mehr 1405', startsOn: '2026-07-01' }));
+    const current = await asUser(tenant, created.adminUserId, () => cycles.create({ name: spec.cycles.current, startsOn: '2026-07-01' }));
     await asUser(tenant, created.adminUserId, () => cycles.activate(current.id));
     // Leave the current cycle mid-flight: one evaluation one step ahead, the rest in draft.
     const open = await asUser(tenant, created.adminUserId, () => evaluations.list({ scope: 'all', cycleId: current.id, limit: 100 }));
-    const first = open.items.find((e) => e.employee.id === ids.get(spec.slug === 'acme' ? 'eve' : 'sara'));
+    const first = open.items.find((e) => e.employee.id === ids.get(spec.showcase));
     if (first) {
       const detail = await asUser(tenant, first.employee.id, () => evaluations.get(first.id));
       const scores = detail.competencies.map((c) => ({ competencyId: c.id, score: scale.max - 1 }));

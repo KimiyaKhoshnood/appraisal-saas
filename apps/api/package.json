@@ -8,7 +8,7 @@
     "dev": "nest start --watch",
     "start": "node dist/main.js",
     "typecheck": "tsc -p tsconfig.check.json",
-    "lint": "eslint src test",
+    "lint": "eslint src test prisma scripts",
     "boundaries": "depcruise src --config .dependency-cruiser.cjs",
     "boundaries:graph": "depcruise src --config .dependency-cruiser.cjs --output-type dot --collapse \"^src/modules/[^/]+\" > ../../docs/module-graph.dot",
     "prisma:generate": "prisma generate",

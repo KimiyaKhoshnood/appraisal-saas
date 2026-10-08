@@ -25,3 +25,5 @@ process.env.PLATFORM_JWT_SECRET ??= 'test-platform-secret-0123456789abcdefgh';
 // Generous unless a suite (E4, throttling) lowers it explicitly.
 process.env.RATE_LIMIT_PER_TENANT_PER_MINUTE ??= '100000';
 process.env.TENANCY_APP_FILTER ??= 'on';
+// Reuse detection is tested strictly; the benign-race grace window has its own test.
+process.env.REFRESH_REUSE_GRACE_MS ??= '0';

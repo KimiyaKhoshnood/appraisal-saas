@@ -55,7 +55,7 @@ export default tseslint.config(
     rules: { 'no-restricted-syntax': 'off' },
   },
   {
-    files: ['**/scripts/**', '**/prisma/**', 'experiments/**', '**/test/**', '**/*.spec.ts', '**/*.spec.tsx'],
+    files: ['**/scripts/**', '**/prisma/**', '**/experiments/**', '**/test/**', '**/*.spec.ts', '**/*.spec.tsx'],
     rules: { 'no-console': 'off', '@typescript-eslint/no-non-null-assertion': 'off' },
   },
   {

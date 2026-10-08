@@ -12,6 +12,7 @@ import {
   toPage,
 } from '../../core';
 import { AuthzService } from './authz.service';
+import { GrantPolicy } from './grant-policy';
 
 const userSelect = {
   id: true,
@@ -50,6 +51,7 @@ export class UsersService {
     private readonly db: Database,
     private readonly authz: AuthzService,
     private readonly events: EventBus,
+    private readonly grants: GrantPolicy,
   ) {}
 
   async list(q: PageQuery & { search?: string }): Promise<Page<UserView>> {
@@ -78,6 +80,7 @@ export class UsersService {
       if (exists) throw new ConflictError('EMAIL_TAKEN', 'A user with this e-mail already exists in the organisation');
       const roleIds = input.roleIds.length ? input.roleIds : await this.defaultRoleIds();
       await this.assertRolesExist(roleIds);
+      if (input.roleIds.length) await this.grants.assertCanGrantRoles(roleIds);
       const created = await tx.user.create({
         data: {
           tenantId,
@@ -122,10 +125,13 @@ export class UsersService {
     if (!active && actorId === id) throw new BusinessRuleError('CANNOT_DEACTIVATE_SELF', 'You cannot deactivate yourself');
     return this.db.transaction(async (tx) => {
       await this.requireUser(id);
+      await this.grants.lockAdminRole();
+      await this.grants.assertCanManageUser(id);
       const user = await tx.user.update({ where: { id }, data: { active }, select: userSelect });
       if (!active) {
         // Kill every session of the user immediately; access tokens die with the authz bump.
         await tx.refreshToken.updateMany({ where: { userId: id, revokedAt: null }, data: { revokedAt: new Date() } });
+        await this.grants.assertAdminRemains();
       }
       await this.authz.bump();
       await this.events.publish({
@@ -144,10 +150,15 @@ export class UsersService {
     return this.db.transaction(async (tx) => {
       await this.requireUser(id);
       await this.assertRolesExist(roleIds);
-      if (TenantContext.actor().id === id) await this.assertKeepsAdmin(roleIds);
+      await this.grants.lockAdminRole();
+      // Privilege ceiling: you may only manage users who hold nothing beyond your own
+      // permissions, and only grant roles made of permissions you hold yourself.
+      await this.grants.assertCanManageUser(id);
+      await this.grants.assertCanGrantRoles(roleIds);
       const before = await tx.userRole.findMany({ where: { userId: id }, select: { roleId: true } });
       await tx.userRole.deleteMany({ where: { userId: id } });
       await tx.userRole.createMany({ data: roleIds.map((roleId) => ({ tenantId, userId: id, roleId })) });
+      await this.grants.assertAdminRemains();
       await this.authz.bump();
       await this.events.publish({
         type: 'iam.user.roles_changed',
@@ -170,14 +181,6 @@ export class UsersService {
     const found = await this.db.client.role.count({ where: { id: { in: unique } } });
     // A role id from another tenant is invisible under RLS → counted as missing → 404.
     if (found !== unique.length) throw new NotFoundError('role');
-  }
-
-  /** Stops an admin from locking the organisation out by removing their own admin role. */
-  private async assertKeepsAdmin(roleIds: string[]) {
-    const keepsAdmin = await this.db.client.role.count({ where: { id: { in: roleIds }, systemKey: 'TENANT_ADMIN' } });
-    if (!keepsAdmin) {
-      throw new BusinessRuleError('CANNOT_REMOVE_OWN_ADMIN', 'You cannot remove the Tenant admin role from yourself');
-    }
   }
 
   private async defaultRoleIds(): Promise<string[]> {

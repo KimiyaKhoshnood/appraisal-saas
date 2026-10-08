@@ -57,6 +57,6 @@ export function parseOpaqueToken(raw: string | undefined): { id: string; secret:
   if (dot <= 0) return null;
   const id = raw.slice(0, dot);
   const secret = raw.slice(dot + 1);
-  if (!/^[0-9a-f-]{36}$/i.test(id) || secret.length < 32) return null;
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id) || secret.length < 32) return null;
   return { id, secret };
 }

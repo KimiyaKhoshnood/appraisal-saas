@@ -6,7 +6,7 @@ import {
   type EvaluationPolicy,
   type ReplaceCompetenciesInput,
 } from '@appraisal/contracts';
-import { BusinessRuleError, Database, EventBus, NotFoundError, TenantContext } from '../../core';
+import { BusinessRuleError, ConflictError, Database, EventBus, NotFoundError, TenantContext } from '../../core';
 import type { Prisma } from '../../generated/prisma/client';
 import { ConfigurationService } from '../configuration';
 import { OrgDirectory } from '../organization';
@@ -152,7 +152,10 @@ export class CyclesService {
       await tx.evaluation.createMany({
         data: withManager.map((r) => ({ tenantId, cycleId: id, employeeId: r.userId, managerId: r.managerId })),
       });
-      await tx.evaluationCycle.update({ where: { id }, data: { status: 'ACTIVE', activatedAt: new Date() } });
+      // Guarded transition; the partial unique index `evaluation_cycle_one_active` turns a
+      // concurrent second activation into a unique violation (409) instead of two active cycles.
+      const { count } = await tx.evaluationCycle.updateMany({ where: { id, status: 'DRAFT' }, data: { status: 'ACTIVE', activatedAt: new Date() } });
+      if (count !== 1) throw new ConflictError('STALE_CYCLE', 'The cycle changed meanwhile; reload and try again');
       await this.events.publish({
         type: 'evaluation.cycle.activated',
         category: 'CHANGE',
@@ -169,7 +172,8 @@ export class CyclesService {
       const cycle = await tx.evaluationCycle.findUnique({ where: { id } });
       if (!cycle) throw new NotFoundError('cycle', id);
       if (cycle.status !== 'ACTIVE') throw new BusinessRuleError('CYCLE_NOT_ACTIVE', 'Only an active cycle can be closed');
-      await tx.evaluationCycle.update({ where: { id }, data: { status: 'CLOSED', closedAt: new Date() } });
+      const { count } = await tx.evaluationCycle.updateMany({ where: { id, status: 'ACTIVE' }, data: { status: 'CLOSED', closedAt: new Date() } });
+      if (count !== 1) throw new ConflictError('STALE_CYCLE', 'The cycle changed meanwhile; reload and try again');
       const open = await tx.evaluation.count({ where: { cycleId: id, status: { not: 'PUBLISHED' } } });
       await this.events.publish({
         type: 'evaluation.cycle.closed',

@@ -138,4 +138,87 @@ describe('configuration and role-based access', () => {
     expect(res.body).toMatchObject({ status: 400, code: 'VALIDATION_FAILED', title: 'Bad Request' });
     expect(res.body.requestId).toBe(res.headers['x-request-id']);
   });
+
+  describe('privilege ceiling (review findings)', () => {
+    let ent: TenantHandle;
+    const roleId = async (key: string) =>
+      ((await h.as(ent.host, ent.adminToken).get('/api/roles').expect(200)).body as { id: string; systemKey: string | null }[]).find(
+        (r) => r.systemKey === key,
+      )!.id;
+
+    beforeAll(async () => {
+      ent = await h.createTenant({ plan: 'ENTERPRISE' });
+    });
+
+    it('user:write alone cannot mint a Tenant admin', async () => {
+      const a = h.as(ent.host, ent.adminToken);
+      const hrRole = (await a.post('/api/roles').send({ name: 'HR clerk', permissions: ['user:read', 'user:write'] }).expect(201)).body;
+      const hr = await h.addUser(ent, 'hrclerk', []);
+      await a.put(`/api/users/${hr.id}/roles`).send({ roleIds: [hrRole.id] }).expect(200);
+      const adminRole = await roleId('TENANT_ADMIN');
+      const res = await h
+        .as(ent.host, hr.token)
+        .post('/api/users')
+        .send({ email: 'mallory@x.test', fullName: 'Mallory Admin', password: 'Password-123', roleIds: [adminRole] });
+      expect(res.status).toBe(403);
+      expect(res.body.code).toBe('GRANT_EXCEEDS_OWN');
+      // A plain employee account is still fine.
+      await h.as(ent.host, hr.token).post('/api/users').send({ email: 'ok@x.test', fullName: 'Okay Person', password: 'Password-123' }).expect(201);
+    });
+
+    it('role:write cannot escalate itself, create broader roles or demote an admin', async () => {
+      const a = h.as(ent.host, ent.adminToken);
+      const mgrRole = (await a.post('/api/roles').send({ name: 'Role manager', permissions: ['role:read', 'role:write', 'user:read'] }).expect(201)).body;
+      const rm = await h.addUser(ent, 'rolemgr', []);
+      await a.put(`/api/users/${rm.id}/roles`).send({ roleIds: [mgrRole.id] }).expect(200);
+      const me = h.as(ent.host, rm.token);
+      const adminRole = await roleId('TENANT_ADMIN');
+      expect((await me.put(`/api/users/${rm.id}/roles`).send({ roleIds: [adminRole] })).body.code).toBe('GRANT_EXCEEDS_OWN');
+      expect((await me.post('/api/roles').send({ name: 'God', permissions: ['config:write'] })).body.code).toBe('GRANT_EXCEEDS_OWN');
+      expect((await me.patch(`/api/roles/${mgrRole.id}`).send({ permissions: ['audit:read'] })).body.code).toBe('GRANT_EXCEEDS_OWN');
+      expect((await me.put(`/api/users/${ent.adminId}/roles`).send({ roleIds: [mgrRole.id] })).body.code).toBe('TARGET_MORE_PRIVILEGED');
+    });
+
+    it('the organisation always keeps an active Tenant admin, even under concurrency', async () => {
+      const t = await h.createTenant({ plan: 'ENTERPRISE' });
+      const rolesBody = (await h.as(t.host, t.adminToken).get('/api/roles').expect(200)).body as { id: string; systemKey: string | null }[];
+      const employee = rolesBody.find((r) => r.systemKey === 'EMPLOYEE')!.id;
+      // Sole admin demoting themselves.
+      expect((await h.as(t.host, t.adminToken).put(`/api/users/${t.adminId}/roles`).send({ roleIds: [employee] })).body.code).toBe('LAST_ADMIN');
+      // Two admins demoting each other at the same time: exactly one wins.
+      const second = await h.addUser(t, 'admin2', ['TENANT_ADMIN']);
+      const [r1, r2] = await Promise.all([
+        h.as(t.host, t.adminToken).put(`/api/users/${second.id}/roles`).send({ roleIds: [employee] }),
+        h.as(t.host, second.token).put(`/api/users/${t.adminId}/roles`).send({ roleIds: [employee] }),
+      ]);
+      expect([r1.status, r2.status].filter((x) => x === 200)).toHaveLength(1);
+      const admins = ((await h.as(t.host, r1.status === 200 ? t.adminToken : second.token).get('/api/users?limit=100').expect(200)).body.items as {
+        active: boolean;
+        roles: { name: string }[];
+      }[]).filter((u) => u.active && u.roles.some((r) => r.name === 'Tenant admin'));
+      expect(admins).toHaveLength(1);
+    });
+  });
+
+  it('two concurrent activations leave exactly one active cycle', async () => {
+    const t = await h.createTenant();
+    const a = h.as(t.host, t.adminToken);
+    const c1 = (await a.post('/api/cycles').send({ name: 'Race one', startsOn: '2026-07-01' }).expect(201)).body;
+    const c2 = (await a.post('/api/cycles').send({ name: 'Race two', startsOn: '2026-10-01' }).expect(201)).body;
+    const res = await Promise.all([a.post(`/api/cycles/${c1.id}/activate`), a.post(`/api/cycles/${c2.id}/activate`)]);
+    expect(res.map((r) => r.status).filter((x) => x === 200)).toHaveLength(1);
+    const cycles = (await a.get('/api/cycles').expect(200)).body as { status: string }[];
+    expect(cycles.filter((c) => c.status === 'ACTIVE')).toHaveLength(1);
+  });
+
+  it("an unsubmitted self-assessment is private to the employee", async () => {
+    const t = await h.createTenant();
+    const o = await buildOrg(h, t);
+    const id = o.evalOf(o.emp1.id);
+    await h.as(t.host, o.emp1.token).put(`/api/evaluations/${id}/self-scores`).send({ scores: [{ competencyId: o.competencies[0]!.id, score: 4 }] }).expect(200);
+    const asManager = (await h.as(t.host, o.manager.token).get(`/api/evaluations/${id}`).expect(200)).body;
+    expect(asManager.scores).toEqual([]);
+    const asEmployee = (await h.as(t.host, o.emp1.token).get(`/api/evaluations/${id}`).expect(200)).body;
+    expect(asEmployee.scores).toHaveLength(1);
+  });
 });

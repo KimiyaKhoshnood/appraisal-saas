@@ -1,0 +1,81 @@
+{
+  "twoStageProd": [
+    {
+      "file": "apps/api/src/modules/evaluation/domain/approval-strategy.ts",
+      "lines": 3
+    },
+    {
+      "file": "apps/api/src/modules/evaluation/domain/state-machine.ts",
+      "lines": 1
+    },
+    {
+      "file": "packages/contracts/src/policy.ts",
+      "lines": 3
+    },
+    {
+      "file": "apps/web/src/i18n/messages.ts",
+      "lines": 2
+    }
+  ],
+  "twoStageTests": [
+    {
+      "file": "apps/api/test/e2e/evaluation.e2e.spec.ts",
+      "lines": 4
+    },
+    {
+      "file": "apps/api/test/unit/evaluation-domain.spec.ts",
+      "lines": 4
+    },
+    {
+      "file": "packages/contracts/src/contracts.spec.ts",
+      "lines": 5
+    }
+  ],
+  "strategyClass": 18,
+  "decisionPoints": [
+    {
+      "file": "apps/api/src/modules/evaluation/cycles.service.ts",
+      "lines": 1
+    },
+    {
+      "file": "apps/api/src/modules/evaluation/domain/approval-strategy.ts",
+      "lines": 1
+    },
+    {
+      "file": "apps/api/src/modules/evaluation/domain/state-machine.ts",
+      "lines": 7
+    },
+    {
+      "file": "apps/api/src/modules/evaluation/evaluations.service.ts",
+      "lines": 6
+    }
+  ],
+  "visibilityProd": [
+    {
+      "file": "apps/api/src/modules/evaluation/evaluations.service.ts",
+      "lines": 2
+    },
+    {
+      "file": "packages/contracts/src/evaluation.ts",
+      "lines": 1
+    },
+    {
+      "file": "packages/contracts/src/policy.ts",
+      "lines": 4
+    },
+    {
+      "file": "apps/web/src/i18n/messages.ts",
+      "lines": 4
+    },
+    {
+      "file": "apps/web/src/tenant/pages/Settings.tsx",
+      "lines": 3
+    }
+  ],
+  "visibilityTests": [
+    {
+      "file": "apps/api/test/e2e/evaluation.e2e.spec.ts",
+      "lines": 3
+    }
+  ]
+}

@@ -77,11 +77,23 @@ export class PlatformAuthService implements PlatformAdminLookup {
     if (!parsed) throw new UnauthorizedError('INVALID_REFRESH', 'Session expired, please sign in again');
     const outcome = await this.db.platformTransaction(async (tx) => {
       const rows = await tx.$queryRaw<
-        { id: string; admin_id: string; family_id: string; token_hash: string; expires_at: Date; revoked_at: Date | null }[]
-      >`SELECT id, admin_id, family_id, token_hash, expires_at, revoked_at
-          FROM platform_refresh_token WHERE id = ${parsed.id}::uuid FOR UPDATE`;
+        {
+          id: string;
+          admin_id: string;
+          family_id: string;
+          token_hash: string;
+          expires_at: Date;
+          revoked_at: Date | null;
+          replaced_by_id: string | null;
+          family_started_at: Date;
+        }[]
+      >`SELECT t.id, t.admin_id, t.family_id, t.token_hash, t.expires_at, t.revoked_at, t.replaced_by_id,
+               (SELECT min(f.created_at) FROM platform_refresh_token f WHERE f.family_id = t.family_id) AS family_started_at
+          FROM platform_refresh_token t WHERE t.id = ${parsed.id}::uuid FOR UPDATE OF t`;
       const row = rows[0];
       if (!row || !safeEqualHex(row.token_hash, sha256(parsed.secret))) return 'invalid' as const;
+      if (row.revoked_at && row.replaced_by_id && Date.now() - row.revoked_at.getTime() < this.env.REFRESH_REUSE_GRACE_MS) return 'invalid' as const;
+      if (Date.now() - row.family_started_at.getTime() > this.env.SESSION_MAX_DAYS * 86_400_000) return 'invalid' as const;
       if (row.revoked_at) {
         await tx.platformRefreshToken.updateMany({ where: { familyId: row.family_id, revokedAt: null }, data: { revokedAt: new Date() } });
         return 'reuse' as const;

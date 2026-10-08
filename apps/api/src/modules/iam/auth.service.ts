@@ -87,11 +87,26 @@ export class AuthService {
     const outcome = await this.db.transaction(async (tx) => {
       // Row lock: two concurrent refreshes with the same token cannot both succeed.
       const rows = await tx.$queryRaw<
-        { id: string; user_id: string; family_id: string; token_hash: string; expires_at: Date; revoked_at: Date | null }[]
-      >`SELECT id, user_id, family_id, token_hash, expires_at, revoked_at
-          FROM refresh_token WHERE id = ${parsed.id}::uuid FOR UPDATE`;
+        {
+          id: string;
+          user_id: string;
+          family_id: string;
+          token_hash: string;
+          expires_at: Date;
+          revoked_at: Date | null;
+          replaced_by_id: string | null;
+          family_started_at: Date;
+        }[]
+      >`SELECT t.id, t.user_id, t.family_id, t.token_hash, t.expires_at, t.revoked_at, t.replaced_by_id,
+               (SELECT min(f.created_at) FROM refresh_token f WHERE f.family_id = t.family_id) AS family_started_at
+          FROM refresh_token t WHERE t.id = ${parsed.id}::uuid FOR UPDATE OF t`;
       const row = rows[0];
       if (!row || !safeEqualHex(row.token_hash, sha256(parsed.secret))) return { kind: 'invalid' as const };
+      // Two tabs (or a retry) refreshing with the same cookie: the loser of the race sees a token
+      // rotated a moment ago. That is not theft; answer 401 without burning the session.
+      if (row.revoked_at && row.replaced_by_id && Date.now() - row.revoked_at.getTime() < this.env.REFRESH_REUSE_GRACE_MS) {
+        return { kind: 'invalid' as const };
+      }
       if (row.revoked_at) {
         await tx.refreshToken.updateMany({
           where: { familyId: row.family_id, revokedAt: null },
@@ -100,6 +115,10 @@ export class AuthService {
         return { kind: 'reuse' as const, userId: row.user_id, familyId: row.family_id };
       }
       if (row.expires_at <= new Date()) return { kind: 'invalid' as const };
+      // Absolute session lifetime: rotation extends a token, never the session beyond this.
+      if (Date.now() - row.family_started_at.getTime() > this.env.SESSION_MAX_DAYS * 86_400_000) {
+        return { kind: 'invalid' as const };
+      }
 
       const user = await tx.user.findUnique({ where: { id: row.user_id }, select: { active: true, fullName: true } });
       if (!user?.active) return { kind: 'invalid' as const };

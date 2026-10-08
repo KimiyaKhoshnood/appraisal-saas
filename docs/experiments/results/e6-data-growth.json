@@ -1,0 +1,261 @@
+{
+  "env": {
+    "date": "2026-10-08T02:54:53.496Z",
+    "cpu": "13th Gen Intel(R) Core(TM) i5-13420H",
+    "cores": 12,
+    "memoryGb": 32,
+    "os": "win32 10.0.22621",
+    "node": "v24.14.0",
+    "postgres": "18.3",
+    "note": "PostgreSQL and the client on the same laptop (loopback); relative comparisons only."
+  },
+  "shape": {
+    "tenants": 100,
+    "users": 200,
+    "cycles": 4,
+    "competencies": 20,
+    "auditPerTenant": 10000
+  },
+  "generated": null,
+  "sizes": [
+    {
+      "relname": "app_user",
+      "rows": "20000",
+      "size": "7288 kB"
+    },
+    {
+      "relname": "audit_log",
+      "rows": "999997",
+      "size": "301 MB"
+    },
+    {
+      "relname": "evaluation",
+      "rows": "79600",
+      "size": "27 MB"
+    },
+    {
+      "relname": "evaluation_score",
+      "rows": "3184000",
+      "size": "638 MB"
+    }
+  ],
+  "iterations": 200,
+  "results": [
+    {
+      "query": "audit: latest 50 entries of a tenant",
+      "tenant": "oldest",
+      "layout": "tenant-first",
+      "median": 1.15,
+      "p95": 3.503,
+      "plan": "Limit (actual rows=50.00 loops=1)\n  Buffers: shared hit=3 read=3\n  ->  Index Scan using audit_log_tenant_id_id_idx on audit_log (actual rows=50.00 loops=1)\n        Index Cond: (tenant_id = (NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid)\n        Index Searches: 1\n        Buffers: shared hit=3 read=3\nPlanning:\n  Buffers: shared hit=118 read=1",
+      "buffers": 6
+    },
+    {
+      "query": "audit: latest 50 entries of a tenant",
+      "tenant": "newest",
+      "layout": "tenant-first",
+      "median": 0.528,
+      "p95": 1.064,
+      "plan": "Limit (actual rows=50.00 loops=1)\n  Buffers: shared hit=5 read=3\n  ->  Index Scan using audit_log_tenant_id_id_idx on audit_log (actual rows=50.00 loops=1)\n        Index Cond: (tenant_id = (NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid)\n        Index Searches: 1\n        Buffers: shared hit=5 read=3",
+      "buffers": 8
+    },
+    {
+      "query": "audit: latest 50 entries of a tenant",
+      "tenant": "oldest",
+      "layout": "global",
+      "median": 24.011,
+      "p95": 38.536,
+      "plan": "Limit (actual rows=50.00 loops=1)\n  Buffers: shared hit=128 read=26\n  ->  Index Scan Backward using audit_log_pkey on audit_log (actual rows=50.00 loops=1)\n        Filter: (tenant_id = (NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid)\n        Rows Removed by Filter: 5940\n        Index Searches: 1\n        Buffers: shared hit=128 read=26\nPlanning:\n  Buffers: shared hit=51",
+      "buffers": 154
+    },
+    {
+      "query": "audit: latest 50 entries of a tenant",
+      "tenant": "newest",
+      "layout": "global",
+      "median": 16.519,
+      "p95": 25.375,
+      "plan": "Limit (actual rows=50.00 loops=1)\n  Buffers: shared hit=104\n  ->  Index Scan Backward using audit_log_pkey on audit_log (actual rows=50.00 loops=1)\n        Filter: (tenant_id = (NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid)\n        Rows Removed by Filter: 3960\n        Index Searches: 1\n        Buffers: shared hit=104",
+      "buffers": 104
+    },
+    {
+      "query": "audit: latest 50 entries of a tenant",
+      "tenant": "oldest",
+      "layout": "none",
+      "median": 24.239,
+      "p95": 37.145,
+      "plan": "Limit (actual rows=50.00 loops=1)\n  Buffers: shared hit=154\n  ->  Index Scan Backward using audit_log_pkey on audit_log (actual rows=50.00 loops=1)\n        Filter: (tenant_id = (NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid)\n        Rows Removed by Filter: 5940\n        Index Searches: 1\n        Buffers: shared hit=154\nPlanning:\n  Buffers: shared hit=14",
+      "buffers": 154
+    },
+    {
+      "query": "audit: latest 50 entries of a tenant",
+      "tenant": "newest",
+      "layout": "none",
+      "median": 15.829,
+      "p95": 25.352,
+      "plan": "Limit (actual rows=50.00 loops=1)\n  Buffers: shared hit=104\n  ->  Index Scan Backward using audit_log_pkey on audit_log (actual rows=50.00 loops=1)\n        Filter: (tenant_id = (NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid)\n        Rows Removed by Filter: 3960\n        Index Searches: 1\n        Buffers: shared hit=104",
+      "buffers": 104
+    },
+    {
+      "query": "team: a manager's open evaluations",
+      "tenant": "oldest",
+      "layout": "tenant-first",
+      "median": 0.547,
+      "p95": 1.373,
+      "plan": "Index Scan using evaluation_open_by_manager on evaluation (actual rows=10.00 loops=1)\n  Index Cond: ((tenant_id = (NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid) AND (manager_id = '01a11965-cd67-76a3-a862-28a1bc96fa5b'::uuid))\n  Index Searches: 1\n  Buffers: shared hit=2 read=2\nPlanning:\n  Buffers: shared hit=132 read=2",
+      "buffers": 4
+    },
+    {
+      "query": "team: a manager's open evaluations",
+      "tenant": "newest",
+      "layout": "tenant-first",
+      "median": 0.471,
+      "p95": 0.959,
+      "plan": "Index Scan using evaluation_open_by_manager on evaluation (actual rows=13.00 loops=1)\n  Index Cond: ((tenant_id = (NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid) AND (manager_id = '01a11965-cd7b-72bc-9da7-7e3348d37e04'::uuid))\n  Index Searches: 1\n  Buffers: shared hit=3 read=1",
+      "buffers": 4
+    },
+    {
+      "query": "team: a manager's open evaluations",
+      "tenant": "oldest",
+      "layout": "global",
+      "median": 1.562,
+      "p95": 3.362,
+      "plan": "Index Scan using e6_team_global on evaluation (actual rows=10.00 loops=1)\n  Index Cond: (manager_id = '01a11965-cd67-76a3-a862-28a1bc96fa5b'::uuid)\n  Filter: (tenant_id = (NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid)\n  Index Searches: 1\n  Buffers: shared hit=2 read=2\nPlanning:\n  Buffers: shared hit=54 read=2",
+      "buffers": 4
+    },
+    {
+      "query": "team: a manager's open evaluations",
+      "tenant": "newest",
+      "layout": "global",
+      "median": 0.651,
+      "p95": 1.946,
+      "plan": "Index Scan using e6_team_global on evaluation (actual rows=13.00 loops=1)\n  Index Cond: (manager_id = '01a11965-cd7b-72bc-9da7-7e3348d37e04'::uuid)\n  Filter: (tenant_id = (NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid)\n  Index Searches: 1\n  Buffers: shared hit=3 read=1",
+      "buffers": 4
+    },
+    {
+      "query": "team: a manager's open evaluations",
+      "tenant": "oldest",
+      "layout": "none",
+      "median": 1.217,
+      "p95": 2.284,
+      "plan": "Index Scan using evaluation_by_cycle_status on evaluation (actual rows=10.00 loops=1)\n  Index Cond: (tenant_id = (NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid)\n  Filter: ((manager_id = '01a11965-cd67-76a3-a862-28a1bc96fa5b'::uuid) AND (status <> 'PUBLISHED'::\"EvaluationStatus\"))\n  Rows Removed by Filter: 786\n  Index Searches: 1\n  Buffers: shared hit=30 read=2\nPlanning:\n  Buffers: shared hit=42 read=1",
+      "buffers": 32
+    },
+    {
+      "query": "team: a manager's open evaluations",
+      "tenant": "newest",
+      "layout": "none",
+      "median": 0.872,
+      "p95": 1.713,
+      "plan": "Index Scan using evaluation_by_cycle_status on evaluation (actual rows=13.00 loops=1)\n  Index Cond: (tenant_id = (NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid)\n  Filter: ((manager_id = '01a11965-cd7b-72bc-9da7-7e3348d37e04'::uuid) AND (status <> 'PUBLISHED'::\"EvaluationStatus\"))\n  Rows Removed by Filter: 783\n  Index Searches: 1\n  Buffers: shared hit=29 read=2",
+      "buffers": 31
+    },
+    {
+      "query": "cycle: status counts of a cycle",
+      "tenant": "oldest",
+      "layout": "tenant-first",
+      "median": 0.51,
+      "p95": 1.043,
+      "plan": "GroupAggregate (actual rows=4.00 loops=1)\n  Group Key: status\n  Buffers: shared hit=1 read=2\n  ->  Index Only Scan using evaluation_by_cycle_status on evaluation (actual rows=199.00 loops=1)\n        Index Cond: ((tenant_id = (NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid) AND (cycle_id = '01a11965-d1cd-7ad4-a254-d1c7338c834d'::uuid))\n        Heap Fetches: 0\n        Index Searches: 1\n        Buffers: shared hit=1 read=2\nPlanning:\n  Buffers: shared hit=69 read=5",
+      "buffers": 3
+    },
+    {
+      "query": "cycle: status counts of a cycle",
+      "tenant": "newest",
+      "layout": "tenant-first",
+      "median": 0.529,
+      "p95": 1.093,
+      "plan": "GroupAggregate (actual rows=4.00 loops=1)\n  Group Key: status\n  Buffers: shared hit=2 read=2\n  ->  Index Only Scan using evaluation_by_cycle_status on evaluation (actual rows=199.00 loops=1)\n        Index Cond: ((tenant_id = (NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid) AND (cycle_id = '01a11965-d1ce-78cd-bd0d-92c6bf23cf93'::uuid))\n        Heap Fetches: 0\n        Index Searches: 1\n        Buffers: shared hit=2 read=2",
+      "buffers": 4
+    },
+    {
+      "query": "cycle: status counts of a cycle",
+      "tenant": "oldest",
+      "layout": "global",
+      "median": 1.127,
+      "p95": 2.332,
+      "plan": "GroupAggregate (actual rows=4.00 loops=1)\n  Group Key: status\n  Buffers: shared hit=41 read=5\n  ->  Sort (actual rows=199.00 loops=1)\n        Sort Key: status\n        Sort Method: quicksort  Memory: 25kB\n        Buffers: shared hit=41 read=5\n        ->  Index Scan using evaluation_tenant_id_cycle_id_employee_id_key on evaluation (actual rows=199.00 loops=1)\n              Index Cond: ((tenant_id = (NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid) AND (cycle_id = '01a11965-d1cd-7ad4-a254-d1c7338c834d'::uuid))\n              Index Searches: 1\n              Buffers: shared hit=36 read=5\nPlanning:\n  Buffers: shared hit=55 read=2",
+      "buffers": 46
+    },
+    {
+      "query": "cycle: status counts of a cycle",
+      "tenant": "newest",
+      "layout": "global",
+      "median": 0.468,
+      "p95": 0.944,
+      "plan": "GroupAggregate (actual rows=4.00 loops=1)\n  Group Key: status\n  Buffers: shared hit=43 read=4\n  ->  Sort (actual rows=199.00 loops=1)\n        Sort Key: status\n        Sort Method: quicksort  Memory: 25kB\n        Buffers: shared hit=43 read=4\n        ->  Index Scan using evaluation_tenant_id_cycle_id_employee_id_key on evaluation (actual rows=199.00 loops=1)\n              Index Cond: ((tenant_id = (NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid) AND (cycle_id = '01a11965-d1ce-78cd-bd0d-92c6bf23cf93'::uuid))\n              Index Searches: 1\n              Buffers: shared hit=43 read=4",
+      "buffers": 47
+    },
+    {
+      "query": "cycle: status counts of a cycle",
+      "tenant": "oldest",
+      "layout": "none",
+      "median": 0.602,
+      "p95": 2.325,
+      "plan": "GroupAggregate (actual rows=4.00 loops=1)\n  Group Key: status\n  Buffers: shared hit=41\n  ->  Sort (actual rows=199.00 loops=1)\n        Sort Key: status\n        Sort Method: quicksort  Memory: 25kB\n        Buffers: shared hit=41\n        ->  Index Scan using evaluation_tenant_id_cycle_id_employee_id_key on evaluation (actual rows=199.00 loops=1)\n              Index Cond: ((tenant_id = (NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid) AND (cycle_id = '01a11965-d1cd-7ad4-a254-d1c7338c834d'::uuid))\n              Index Searches: 1\n              Buffers: shared hit=41\nPlanning:\n  Buffers: shared hit=40 read=1",
+      "buffers": 42
+    },
+    {
+      "query": "cycle: status counts of a cycle",
+      "tenant": "newest",
+      "layout": "none",
+      "median": 0.485,
+      "p95": 1.055,
+      "plan": "GroupAggregate (actual rows=4.00 loops=1)\n  Group Key: status\n  Buffers: shared hit=47\n  ->  Sort (actual rows=199.00 loops=1)\n        Sort Key: status\n        Sort Method: quicksort  Memory: 25kB\n        Buffers: shared hit=47\n        ->  Index Scan using evaluation_tenant_id_cycle_id_employee_id_key on evaluation (actual rows=199.00 loops=1)\n              Index Cond: ((tenant_id = (NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid) AND (cycle_id = '01a11965-d1ce-78cd-bd0d-92c6bf23cf93'::uuid))\n              Index Searches: 1\n              Buffers: shared hit=47",
+      "buffers": 47
+    },
+    {
+      "query": "scores: all scores of one evaluation",
+      "tenant": "oldest",
+      "layout": "tenant-first",
+      "median": 1.925,
+      "p95": 3.717,
+      "plan": "Index Scan using evaluation_score_tenant_id_evaluation_id_competency_id_eval_key on evaluation_score (actual rows=40.00 loops=1)\n  Index Cond: ((tenant_id = (NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid) AND (evaluation_id = '01a11965-d291-7c29-8129-e106a2ea55a8'::uuid))\n  Index Searches: 1\n  Buffers: shared hit=7 read=19\nPlanning:\n  Buffers: shared hit=58 read=2",
+      "buffers": 26
+    },
+    {
+      "query": "scores: all scores of one evaluation",
+      "tenant": "newest",
+      "layout": "tenant-first",
+      "median": 0.476,
+      "p95": 1.214,
+      "plan": "Index Scan using evaluation_score_tenant_id_evaluation_id_competency_id_eval_key on evaluation_score (actual rows=40.00 loops=1)\n  Index Cond: ((tenant_id = (NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid) AND (evaluation_id = '01a11965-db80-75f7-ba7d-48449cff81e2'::uuid))\n  Index Searches: 1\n  Buffers: shared hit=7 read=19",
+      "buffers": 26
+    },
+    {
+      "query": "scores: all scores of one evaluation",
+      "tenant": "oldest",
+      "layout": "global",
+      "median": 1.48,
+      "p95": 2.099,
+      "plan": "Bitmap Heap Scan on evaluation_score (actual rows=40.00 loops=1)\n  Recheck Cond: (evaluation_id = '01a11965-d291-7c29-8129-e106a2ea55a8'::uuid)\n  Filter: (tenant_id = (NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid)\n  Heap Blocks: exact=21\n  Buffers: shared hit=21 read=4\n  ->  Bitmap Index Scan on e6_scores_global (actual rows=40.00 loops=1)\n        Index Cond: (evaluation_id = '01a11965-d291-7c29-8129-e106a2ea55a8'::uuid)\n        Index Searches: 1\n        Buffers: shared read=4\nPlanning:\n  Buffers: shared hit=65 read=1",
+      "buffers": 25
+    },
+    {
+      "query": "scores: all scores of one evaluation",
+      "tenant": "newest",
+      "layout": "global",
+      "median": 1.635,
+      "p95": 3.27,
+      "plan": "Bitmap Heap Scan on evaluation_score (actual rows=40.00 loops=1)\n  Recheck Cond: (evaluation_id = '01a11965-db80-75f7-ba7d-48449cff81e2'::uuid)\n  Filter: (tenant_id = (NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid)\n  Heap Blocks: exact=21\n  Buffers: shared hit=22 read=2\n  ->  Bitmap Index Scan on e6_scores_global (actual rows=40.00 loops=1)\n        Index Cond: (evaluation_id = '01a11965-db80-75f7-ba7d-48449cff81e2'::uuid)\n        Index Searches: 1\n        Buffers: shared hit=1 read=2",
+      "buffers": 24
+    },
+    {
+      "query": "scores: all scores of one evaluation",
+      "tenant": "oldest",
+      "layout": "none",
+      "median": 240.33,
+      "p95": 388.98,
+      "plan": "Gather (actual rows=40.00 loops=1)\n  Workers Planned: 2\n  Workers Launched: 2\n  Buffers: shared hit=11021 read=28288\n  ->  Parallel Seq Scan on evaluation_score (actual rows=13.33 loops=3)\n        Filter: ((evaluation_id = '01a11965-d291-7c29-8129-e106a2ea55a8'::uuid) AND (tenant_id = (NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid))\n        Rows Removed by Filter: 1061320\n        Buffers: shared hit=11021 read=28288\nPlanning:\n  Buffers: shared hit=24",
+      "buffers": 39309
+    },
+    {
+      "query": "scores: all scores of one evaluation",
+      "tenant": "newest",
+      "layout": "none",
+      "median": 230.074,
+      "p95": 358.401,
+      "plan": "Gather (actual rows=40.00 loops=1)\n  Workers Planned: 2\n  Workers Launched: 2\n  Buffers: shared hit=15998 read=23311\n  ->  Parallel Seq Scan on evaluation_score (actual rows=13.33 loops=3)\n        Filter: ((evaluation_id = '01a11965-db80-75f7-ba7d-48449cff81e2'::uuid) AND (tenant_id = (NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid))\n        Rows Removed by Filter: 1061320\n        Buffers: shared hit=15998 read=23311",
+      "buffers": 39309
+    }
+  ]
+}

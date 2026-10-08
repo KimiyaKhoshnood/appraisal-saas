@@ -16,6 +16,10 @@ const envSchema = z
     PLATFORM_JWT_SECRET: z.string().min(32),
     ACCESS_TOKEN_TTL_SECONDS: z.coerce.number().int().min(60).max(3600).default(900),
     REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().min(1).max(90).default(14),
+    /** Absolute lifetime of a login session (refresh-token family), however often it rotates. */
+    SESSION_MAX_DAYS: z.coerce.number().int().min(1).max(365).default(30),
+    /** A just-rotated refresh token presented again within this window is a benign race, not theft. */
+    REFRESH_REUSE_GRACE_MS: z.coerce.number().int().min(0).max(60_000).default(10_000),
     RATE_LIMIT_PER_TENANT_PER_MINUTE: z.coerce.number().int().min(0).default(1200),
     STATEMENT_TIMEOUT_MS: z.coerce.number().int().min(0).default(5000),
     DB_POOL_MAX: z.coerce.number().int().min(1).max(200).default(10),

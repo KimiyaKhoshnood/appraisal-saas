@@ -10,6 +10,7 @@ import {
 } from '@appraisal/contracts';
 import { BusinessRuleError, ConflictError, Database, EventBus, NotFoundError, TenantContext, ValidationFailedError } from '../../core';
 import { AuthzService } from './authz.service';
+import { GrantPolicy } from './grant-policy';
 
 function validatePermissions(keys: string[]): Permission[] {
   const invalid = keys.filter((k) => !isPermission(k));
@@ -25,6 +26,7 @@ export class RolesService {
     private readonly db: Database,
     private readonly authz: AuthzService,
     private readonly events: EventBus,
+    private readonly grants: GrantPolicy,
   ) {}
 
   catalog(): { key: Permission; description: string }[] {
@@ -49,6 +51,7 @@ export class RolesService {
   async create(input: CreateRoleInput): Promise<RoleView> {
     const tenantId = TenantContext.requireTenantId();
     const permissions = validatePermissions(input.permissions);
+    this.grants.assertCanGrantPermissions(permissions);
     return this.db.transaction(async (tx) => {
       const clash = await tx.role.findFirst({ where: { name: input.name }, select: { id: true } });
       if (clash) throw new ConflictError('ROLE_NAME_TAKEN', 'A role with this name already exists');
@@ -80,6 +83,7 @@ export class RolesService {
       if (input.name) await tx.role.update({ where: { id }, data: { name: input.name } });
       if (input.permissions) {
         const permissions = validatePermissions(input.permissions);
+        this.grants.assertCanGrantPermissions(permissions);
         await tx.rolePermission.deleteMany({ where: { roleId: id } });
         await tx.rolePermission.createMany({ data: permissions.map((permissionKey) => ({ tenantId, roleId: id, permissionKey })) });
       }

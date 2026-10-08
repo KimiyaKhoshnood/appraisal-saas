@@ -105,4 +105,27 @@ describe('authentication and tenant resolution', () => {
     expect(attempts.slice(0, 5).every((s) => s === 401)).toBe(true);
     expect(attempts[5]).toBe(429);
   });
+
+  it('treats a near-simultaneous double refresh as a race, not theft (grace window)', async () => {
+    const graceful = await Harness.start({ REFRESH_REUSE_GRACE_MS: '10000' });
+    try {
+      const s = await graceful.login(a.slug, a.adminEmail);
+      const [r1, r2] = await Promise.all([
+        graceful.as(a.host).post('/api/auth/refresh').set('Cookie', s.cookie),
+        graceful.as(a.host).post('/api/auth/refresh').set('Cookie', s.cookie),
+      ]);
+      expect([r1.status, r2.status].sort()).toEqual([200, 401]);
+      const winner = [r1, r2].find((r) => r.status === 200)!;
+      const rotated = ([] as string[]).concat(winner.headers['set-cookie'] ?? []).find((c) => c.startsWith('rt='))!.split(';')[0]!;
+      // The session survived: the winner's new token still works.
+      await graceful.as(a.host).post('/api/auth/refresh').set('Cookie', rotated).expect(200);
+    } finally {
+      process.env.REFRESH_REUSE_GRACE_MS = '0';
+      await graceful.close();
+    }
+  });
+
+  it('rejects a malformed refresh token with 401, not 500', async () => {
+    await h.as(a.host).post('/api/auth/refresh').set('Cookie', `rt=${'-'.repeat(36)}.${'x'.repeat(43)}`).expect(401);
+  });
 });

@@ -117,7 +117,7 @@ export class EvaluationsService {
       const e = await this.load(id, access);
       const policy = parsePolicySnapshot(e.cycle.policySnapshot);
       this.assertCanEdit(e, evaluator, policy, access);
-      this.validateScores(e, policy, input, false);
+      this.validateScores(e, policy, input);
       await this.upsertScores(tx, e, evaluator, input);
       await this.bumpVersion(tx, e);
       return this.detail(await this.load(id, access), access);
@@ -132,7 +132,7 @@ export class EvaluationsService {
       const policy = parsePolicySnapshot(e.cycle.policySnapshot);
       this.assertCanEdit(e, evaluator, policy, access);
       if (input) {
-        this.validateScores(e, policy, input, false);
+        this.validateScores(e, policy, input);
         await this.upsertScores(tx, e, evaluator, input);
       }
       const scores = await tx.evaluationScore.findMany({ where: { evaluationId: id, evaluator } });
@@ -250,7 +250,7 @@ export class EvaluationsService {
     }
   }
 
-  private validateScores(e: EvaluationRow, policy: EvaluationPolicy, input: SaveScoresInput, _requireAll: boolean) {
+  private validateScores(e: EvaluationRow, policy: EvaluationPolicy, input: SaveScoresInput) {
     const known = new Set(e.cycle.competencies.map((c) => c.id));
     const errors: { path: string; message: string }[] = [];
     const seen = new Set<string>();
@@ -334,8 +334,10 @@ export class EvaluationsService {
     const names = await this.org.names([e.employeeId, e.managerId, ...e.approvals.map((a) => a.approverId)]);
 
     const scores = e.scores
-      // The employee never sees the manager's draft; after publish, only if the policy allows.
-      .filter((s) => s.evaluator === 'SELF' || !isEmployee || managerVisible)
+      // Drafts are private to their author: the employee never sees the manager's scores before
+      // publication (and after it only if the policy allows); nobody else sees the employee's
+      // self-assessment before it is submitted.
+      .filter((s) => (s.evaluator === 'SELF' ? isEmployee || e.status !== 'DRAFT' : !isEmployee || managerVisible))
       .map((s) => ({ competencyId: s.competencyId, evaluator: s.evaluator, score: s.score, comment: s.comment }));
 
     return {

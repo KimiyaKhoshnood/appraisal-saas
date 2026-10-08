@@ -120,7 +120,7 @@ steps against a PostgreSQL 18 service; it has not run yet because nothing has be
 | E1 | Is isolation complete? | Every parameterised tenant route answers 404 to foreign ids, **also with the application filter off** (RLS alone); no foreign id in any collection; foreign references rejected; victim unchanged. |
 | E2 | Shared schema vs schema-per-tenant | provisioning ≈ 3.5 ms (A) vs ≈ 220 ms (B); one migration ≈ 0.1 s once (A) vs linear in N (1.8 s for 500 empty schemas); B adds 84 relations per tenant (+150 MB catalog at 500) |
 | E3 | Cost of RLS and the wrapper | RLS predicate ≈ 0 (folded into the index condition); transaction wrapper ≈ 0.2 ms; ORM ≈ 1.5 ms |
-| E4 | Noisy neighbour | see results |
+| E4 | Noisy neighbour | light tenant p95: 27 ms alone → 960 ms with a 100× tenant hammering it → 683 ms with the per-tenant rate limit → 298 ms adding `statement_timeout` (3 repetitions). Controls help a lot; full isolation of a heavy tenant needs separate capacity (documented growth path) |
 | E5 | Cost of customisation | level 3 strategy: 18-line class, 0 tenant branches, no deploy per customer |
 | E6 | Growth and tenant-first indexes | 100 tenants, 3.2 M scores, 1 M audit rows: shipped indexes keep every query ≤ 4 ms p95 (NF-07). Tenant-first is decisive where the tenant is the selective column (audit page: 6–8 vs 104–154 pages, ~1 ms vs 16–24 ms, growing with tenant count); equal where another column is selective; no index → 240 ms |
 
@@ -140,6 +140,8 @@ Recorded honestly, because they are part of the argument:
   cycles, a double refresh revoking the session, a malformed token id giving 500). All fixed with a
   grant ceiling, a last-admin invariant under a row lock, a partial unique index, a refresh grace
   window, strict UUID parsing; each has a regression test.
+- **E4 findings**: the first rate limiter allowed a whole minute of burst and never fired within a
+  test window (burst is now 10 s of budget); statement timeouts surfaced as 500 (now 503 + Retry-After).
 - **Prisma `maxWait`** raised from 2 s: bursts that a 10-connection pool absorbs fine were failing.
 
 ## Licence

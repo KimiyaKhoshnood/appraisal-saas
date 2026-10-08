@@ -177,7 +177,7 @@ function Shell() {
             <NavLink
               key={n.to}
               to={n.to}
-              end={n.to === '/'}
+              end={n.to === '/' || n.to === '/evaluations'}
               className={({ isActive }) =>
                 cx('focus-ring block rounded-lg px-3 py-2 text-sm', isActive ? 'bg-brand-soft font-medium text-brand' : 'text-slate-700 hover:bg-slate-50')
               }
@@ -203,7 +203,7 @@ function Shell() {
         </header>
         <nav className="flex gap-1 overflow-x-auto border-b border-slate-200 bg-white px-2 py-2 md:hidden" aria-label="Main">
           {items.map((n) => (
-            <NavLink key={n.to} to={n.to} end={n.to === '/'} className={({ isActive }) => cx('rounded-md px-3 py-1.5 text-sm whitespace-nowrap', isActive ? 'bg-brand-soft text-brand' : 'text-slate-600')}>
+            <NavLink key={n.to} to={n.to} end={n.to === '/' || n.to === '/evaluations'} className={({ isActive }) => cx('rounded-md px-3 py-1.5 text-sm whitespace-nowrap', isActive ? 'bg-brand-soft text-brand' : 'text-slate-600')}>
               {t(n.label)}
             </NavLink>
           ))}

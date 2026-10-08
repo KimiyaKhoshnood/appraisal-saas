@@ -155,24 +155,47 @@ async function main() {
   const gen = process.env.E4_REUSE ? null : await generate({ ...SHAPE, auditPerTenant: 200 });
   if (gen) console.log('generated', gen);
 
-  const results = [];
-  for (const s of SCENARIOS) {
-    const r = await runScenario(s);
-    console.log(JSON.stringify(r));
-    results.push(r);
+  const REPEATS = Number(process.env.E4_REPEATS ?? 3);
+  const runs: Awaited<ReturnType<typeof runScenario>>[] = [];
+  // Scenarios interleaved per repetition so slow drift (thermal, OS) hits all of them equally.
+  for (let rep = 1; rep <= REPEATS; rep++) {
+    for (const s of SCENARIOS) {
+      const r = await runScenario(s);
+      console.log(`rep ${rep}`, JSON.stringify(r));
+      runs.push(r);
+    }
   }
-
-  const base = results[0]!.light;
+  const med = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)]!;
+  const sumStatus = (xs: Record<number, number>[]) =>
+    xs.reduce<Record<string, number>>((acc, st) => {
+      for (const [k, v] of Object.entries(st)) acc[k] = (acc[k] ?? 0) + v;
+      return acc;
+    }, {});
+  const results = SCENARIOS.map((sc) => {
+    const rs = runs.filter((r) => r.scenario === sc.id);
+    return {
+      scenario: sc.id,
+      label: sc.label,
+      medianMs: med(rs.map((r) => r.light.median)),
+      p95Ms: med(rs.map((r) => r.light.p95)),
+      p95Range: [Math.min(...rs.map((r) => r.light.p95)), Math.max(...rs.map((r) => r.light.p95))],
+      lightStatus: sumStatus(rs.map((r) => r.light.status)),
+      heavyOkPerSecond: med(rs.map((r) => r.heavy.okPerSecond)),
+      heavyStatus: sumStatus(rs.map((r) => r.heavy.status)),
+    };
+  });
+  const base = results[0]!;
+  const fmt = (st: Record<string, number>) => Object.entries(st).map(([k, v]) => `${k}:${v}`).join(' ');
   const rows = results.map((r) => [
     r.scenario,
     r.label,
-    round(r.light.median, 1),
-    round(r.light.p95, 1),
-    `${round(r.light.p95 / base.p95, 1)}×`,
-    r.light.requests,
-    Object.entries(r.light.status).map(([k, v]) => `${k}:${v}`).join(' '),
-    r.heavy.okPerSecond,
-    Object.entries(r.heavy.status).map(([k, v]) => `${k}:${v}`).join(' '),
+    round(r.medianMs, 1),
+    round(r.p95Ms, 1),
+    `${round(r.p95Range[0]!, 0)}–${round(r.p95Range[1]!, 0)}`,
+    `${round(r.p95Ms / base.p95Ms, 1)}×`,
+    fmt(r.lightStatus),
+    r.heavyOkPerSecond,
+    fmt(r.heavyStatus),
   ]);
   const md = `
 # E4: noisy neighbour
@@ -182,24 +205,31 @@ ${envBlock(env)}
 Light tenant: ${SHAPE.users} employees, ≈ 40 req/s of everyday reads (context, team list, cycles).
 Heavy tenant: ${SHAPE.users + SHAPE.heavyUsers} employees (100×), ${HEAVY_CLIENTS} concurrent clients calling the reports, analytics
 and full-list endpoints back-to-back. Same API process, same 10-connection pool, same database.
-${DURATION_MS / 1000} s per scenario, a fresh application per scenario. Latencies in ms.
+${DURATION_MS / 1000} s per scenario, a fresh application per scenario, ${REPEATS} interleaved repetitions; medians across
+repetitions, latencies in ms.
 
-${table(['', 'scenario', 'light median', 'light p95', 'p95 vs alone', 'light requests', 'light status codes', 'heavy 200/s', 'heavy status codes'], rows)}
+${table(['', 'scenario', 'light median', 'light p95', 'p95 range over runs', 'p95 vs alone', 'light status codes (all runs)', 'heavy 200/s', 'heavy status codes (all runs)'], rows)}
 
 ## Reading
 
-- **S1** is the cost of a shared pool and a shared database: the light tenant waits behind the
-  heavy tenant's queries for connections and CPU.
-- **S2**: the per-tenant token bucket answers the heavy tenant's excess with a cheap 429 before it
-  touches the database, so the light tenant's latency returns towards S0 while the heavy tenant
-  still gets its fair share (its budget per minute).
-- **S3**: \`statement_timeout\` (set per transaction with the tenant) additionally caps any single
-  expensive statement: slow report queries of the heavy tenant now fail fast (5xx counted above)
-  instead of occupying a connection.
-- The limiter is in-memory per instance (ADR / over-engineering table): with R replicas the
-  effective budget is R × the configured one, accepted until exact limits are required (Redis).
+- **S1 shows the price of shared resources**: with no controls the heavy tenant occupies the
+  10-connection pool and the CPU, and the light tenant's p95 grows by one to two orders of
+  magnitude. The spread between repetitions is large: contention is bursty.
+- **S2, per-tenant rate limit**: the heavy tenant's excess is answered with a cheap 429 before it
+  reaches the database, and the light tenant's latency falls substantially. (The first version of
+  the limiter allowed a burst of a full minute's budget and did not fire within a 20 s run; the
+  burst is now ten seconds' worth.)
+- **S3, plus statement_timeout**: expensive statements are cut after 150 ms and answered 503 +
+  Retry-After, so no single query holds a connection for long; the light tenant's tail improves
+  further.
+- **Not solved**: even with both controls the light tenant stays well above its stand-alone
+  latency, because the heavy tenant's *permitted* share still competes for the same pool and CPU.
+  Fully isolating a heavy tenant needs separate capacity: a per-tenant connection budget or
+  moving it to its own database through \`tenant_directory\`, the documented growth path.
+- The limiter is in-memory per instance: with R replicas the effective budget is R × the
+  configured one, accepted until exact limits are required (Redis).
 `;
-  writeResult('e4-noisy-neighbour', { env, shape: SHAPE, durationMs: DURATION_MS, heavyClients: HEAVY_CLIENTS, results }, md);
+  writeResult('e4-noisy-neighbour', { env, shape: SHAPE, durationMs: DURATION_MS, heavyClients: HEAVY_CLIENTS, repeats: REPEATS, results, runs }, md);
   agent.destroy();
 }
 

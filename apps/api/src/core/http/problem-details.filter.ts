@@ -46,6 +46,8 @@ export class ProblemDetailsFilter implements ExceptionFilter {
 
     if (exception instanceof TooManyRequestsError) {
       res.setHeader('Retry-After', String(exception.retryAfterSeconds));
+    } else if (body.status === 503) {
+      res.setHeader('Retry-After', '1');
     }
     if (res.headersSent) return;
     res
@@ -82,6 +84,12 @@ export class ProblemDetailsFilter implements ExceptionFilter {
           return NOT_FOUND();
       }
     }
+    if (this.isOverload(exception)) {
+      // statement_timeout or no pooled connection in time: the request was shed to protect other
+      // tenants (T9). Temporary by nature, so 503 + Retry-After rather than a 500.
+      this.logger.warn({ err: exception }, 'request shed: statement timeout or pool exhausted');
+      return problem(503, 'OVERLOADED', 'The service is busy, please retry shortly');
+    }
     if (this.isRlsViolation(exception)) {
       this.logger.warn({ err: exception }, 'row-level security rejected a write');
       await this.recordNotFound('rls-write', undefined, req);
@@ -94,6 +102,11 @@ export class ProblemDetailsFilter implements ExceptionFilter {
     }
     this.logger.error({ err: exception }, 'unhandled error');
     return problem(500, 'INTERNAL', 'Unexpected error');
+  }
+
+  private isOverload(err: unknown): boolean {
+    const msg = err instanceof Error ? err.message : '';
+    return /canceling statement due to statement timeout|Unable to start a transaction in the given time|Timed out fetching a new connection/i.test(msg);
   }
 
   private isRlsViolation(err: unknown): boolean {

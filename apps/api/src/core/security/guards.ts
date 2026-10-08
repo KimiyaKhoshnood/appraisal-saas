@@ -155,8 +155,9 @@ export class RateLimitGuard implements CanActivate {
     @Inject(ENV) env: Env,
   ) {
     const perMinute = env.RATE_LIMIT_PER_TENANT_PER_MINUTE;
-    // Burst = one minute of budget; refill evenly.
-    this.limiter = new TokenBucketLimiter(perMinute, perMinute / 60);
+    // Burst = ten seconds of budget, refilled evenly. A full minute of burst (the first version)
+    // let a noisy tenant run unthrottled for a whole E4 scenario; see docs/experiments E4.
+    this.limiter = new TokenBucketLimiter(perMinute > 0 ? Math.max(10, Math.ceil(perMinute / 6)) : 0, perMinute / 60);
   }
 
   canActivate(ctx: ExecutionContext): boolean {

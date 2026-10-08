@@ -1,0 +1,338 @@
+{
+  "env": {
+    "date": "2026-10-08T03:16:28.688Z",
+    "cpu": "13th Gen Intel(R) Core(TM) i5-13420H",
+    "cores": 12,
+    "memoryGb": 32,
+    "os": "win32 10.0.22621",
+    "node": "v24.14.0",
+    "postgres": "18.3",
+    "note": "PostgreSQL and the client on the same laptop (loopback); relative comparisons only."
+  },
+  "shape": {
+    "tenants": 10,
+    "users": 20,
+    "cycles": 4,
+    "competencies": 20,
+    "heavyUsers": 1980
+  },
+  "durationMs": 20000,
+  "heavyClients": 24,
+  "repeats": 3,
+  "results": [
+    {
+      "scenario": "S0",
+      "label": "light tenant alone",
+      "medianMs": 15.257,
+      "p95Ms": 27.077,
+      "p95Range": [
+        22.658,
+        27.228
+      ],
+      "lightStatus": {
+        "200": 1234
+      },
+      "heavyOkPerSecond": 0,
+      "heavyStatus": {}
+    },
+    {
+      "scenario": "S1",
+      "label": "heavy load, no controls",
+      "medianMs": 256.204,
+      "p95Ms": 959.671,
+      "p95Range": [
+        854.782,
+        1011.091
+      ],
+      "lightStatus": {
+        "200": 150
+      },
+      "heavyOkPerSecond": 19.1,
+      "heavyStatus": {
+        "200": 1165
+      }
+    },
+    {
+      "scenario": "S2",
+      "label": "heavy load + per-tenant rate limit (600/min)",
+      "medianMs": 106.837,
+      "p95Ms": 682.952,
+      "p95Range": [
+        528.581,
+        875.392
+      ],
+      "lightStatus": {
+        "200": 276
+      },
+      "heavyOkPerSecond": 15,
+      "heavyStatus": {
+        "200": 897,
+        "429": 5962
+      }
+    },
+    {
+      "scenario": "S3",
+      "label": "heavy load + rate limit + statement_timeout 150 ms",
+      "medianMs": 140.128,
+      "p95Ms": 297.661,
+      "p95Range": [
+        239.614,
+        711.639
+      ],
+      "lightStatus": {
+        "200": 314
+      },
+      "heavyOkPerSecond": 10.2,
+      "heavyStatus": {
+        "200": 606,
+        "429": 9662,
+        "503": 297
+      }
+    }
+  ],
+  "runs": [
+    {
+      "scenario": "S0",
+      "label": "light tenant alone",
+      "light": {
+        "n": 409,
+        "median": 15.257,
+        "p95": 27.228,
+        "mean": 16.248,
+        "requests": 409,
+        "status": {
+          "200": 409
+        }
+      },
+      "heavy": {
+        "okPerSecond": 0,
+        "status": {}
+      }
+    },
+    {
+      "scenario": "S1",
+      "label": "heavy load, no controls",
+      "light": {
+        "n": 50,
+        "median": 256.204,
+        "p95": 854.782,
+        "mean": 381.59,
+        "requests": 50,
+        "status": {
+          "200": 50
+        }
+      },
+      "heavy": {
+        "okPerSecond": 18.9,
+        "status": {
+          "200": 378
+        }
+      }
+    },
+    {
+      "scenario": "S2",
+      "label": "heavy load + per-tenant rate limit (600/min)",
+      "light": {
+        "n": 97,
+        "median": 93.936,
+        "p95": 875.392,
+        "mean": 178.988,
+        "requests": 97,
+        "status": {
+          "200": 97
+        }
+      },
+      "heavy": {
+        "okPerSecond": 15,
+        "status": {
+          "200": 299,
+          "429": 2432
+        }
+      }
+    },
+    {
+      "scenario": "S3",
+      "label": "heavy load + rate limit + statement_timeout 150 ms",
+      "light": {
+        "n": 109,
+        "median": 140.128,
+        "p95": 297.661,
+        "mean": 154.342,
+        "requests": 109,
+        "status": {
+          "200": 109
+        }
+      },
+      "heavy": {
+        "okPerSecond": 10.4,
+        "status": {
+          "200": 207,
+          "429": 3454,
+          "503": 92
+        }
+      }
+    },
+    {
+      "scenario": "S0",
+      "label": "light tenant alone",
+      "light": {
+        "n": 405,
+        "median": 16.005,
+        "p95": 27.077,
+        "mean": 17.013,
+        "requests": 405,
+        "status": {
+          "200": 405
+        }
+      },
+      "heavy": {
+        "okPerSecond": 0,
+        "status": {}
+      }
+    },
+    {
+      "scenario": "S1",
+      "label": "heavy load, no controls",
+      "light": {
+        "n": 50,
+        "median": 280.134,
+        "p95": 959.671,
+        "mean": 371.701,
+        "requests": 50,
+        "status": {
+          "200": 50
+        }
+      },
+      "heavy": {
+        "okPerSecond": 19.1,
+        "status": {
+          "200": 382
+        }
+      }
+    },
+    {
+      "scenario": "S2",
+      "label": "heavy load + per-tenant rate limit (600/min)",
+      "light": {
+        "n": 85,
+        "median": 106.837,
+        "p95": 682.952,
+        "mean": 209.057,
+        "requests": 85,
+        "status": {
+          "200": 85
+        }
+      },
+      "heavy": {
+        "okPerSecond": 15,
+        "status": {
+          "200": 299,
+          "429": 1657
+        }
+      }
+    },
+    {
+      "scenario": "S3",
+      "label": "heavy load + rate limit + statement_timeout 150 ms",
+      "light": {
+        "n": 130,
+        "median": 108.54,
+        "p95": 239.614,
+        "mean": 125.35,
+        "requests": 130,
+        "status": {
+          "200": 130
+        }
+      },
+      "heavy": {
+        "okPerSecond": 9.8,
+        "status": {
+          "200": 195,
+          "429": 4228,
+          "503": 104
+        }
+      }
+    },
+    {
+      "scenario": "S0",
+      "label": "light tenant alone",
+      "light": {
+        "n": 420,
+        "median": 13.799,
+        "p95": 22.658,
+        "mean": 14.466,
+        "requests": 420,
+        "status": {
+          "200": 420
+        }
+      },
+      "heavy": {
+        "okPerSecond": 0,
+        "status": {}
+      }
+    },
+    {
+      "scenario": "S1",
+      "label": "heavy load, no controls",
+      "light": {
+        "n": 50,
+        "median": 195.315,
+        "p95": 1011.091,
+        "mean": 380.192,
+        "requests": 50,
+        "status": {
+          "200": 50
+        }
+      },
+      "heavy": {
+        "okPerSecond": 20.3,
+        "status": {
+          "200": 405
+        }
+      }
+    },
+    {
+      "scenario": "S2",
+      "label": "heavy load + per-tenant rate limit (600/min)",
+      "light": {
+        "n": 94,
+        "median": 112.472,
+        "p95": 528.581,
+        "mean": 186.857,
+        "requests": 94,
+        "status": {
+          "200": 94
+        }
+      },
+      "heavy": {
+        "okPerSecond": 15,
+        "status": {
+          "200": 299,
+          "429": 1873
+        }
+      }
+    },
+    {
+      "scenario": "S3",
+      "label": "heavy load + rate limit + statement_timeout 150 ms",
+      "light": {
+        "n": 75,
+        "median": 195.737,
+        "p95": 711.639,
+        "mean": 243.807,
+        "requests": 75,
+        "status": {
+          "200": 75
+        }
+      },
+      "heavy": {
+        "okPerSecond": 10.2,
+        "status": {
+          "200": 204,
+          "429": 1980,
+          "503": 101
+        }
+      }
+    }
+  ]
+}

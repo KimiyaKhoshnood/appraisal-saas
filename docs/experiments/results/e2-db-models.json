@@ -1,0 +1,75 @@
+{
+  "env": {
+    "date": "2026-10-08T03:05:26.105Z",
+    "cpu": "13th Gen Intel(R) Core(TM) i5-13420H",
+    "cores": 12,
+    "memoryGb": 32,
+    "os": "win32 10.0.22621",
+    "node": "v24.14.0",
+    "postgres": "18.3",
+    "note": "PostgreSQL and the client on the same laptop (loopback); relative comparisons only."
+  },
+  "ddlStatements": 54,
+  "results": [
+    {
+      "n": 10,
+      "bCreate": {
+        "n": 10,
+        "median": 195.619,
+        "p95": 299.222,
+        "mean": 205.246
+      },
+      "bCreateTotalS": 2.05,
+      "bMigrationS": 0.05,
+      "bRelationsAdded": 840,
+      "bCatalogGrowthMb": 2.5,
+      "aCreate": {
+        "n": 10,
+        "median": 10.663,
+        "p95": 103.669,
+        "mean": 19.83
+      },
+      "aMigrationS": 0.113
+    },
+    {
+      "n": 100,
+      "bCreate": {
+        "n": 100,
+        "median": 216.693,
+        "p95": 322.816,
+        "mean": 220.101
+      },
+      "bCreateTotalS": 22.01,
+      "bMigrationS": 0.36,
+      "bRelationsAdded": 8400,
+      "bCatalogGrowthMb": 32.7,
+      "aCreate": {
+        "n": 100,
+        "median": 3.766,
+        "p95": 6.307,
+        "mean": 4.021
+      },
+      "aMigrationS": 0.093
+    },
+    {
+      "n": 500,
+      "bCreate": {
+        "n": 500,
+        "median": 225.025,
+        "p95": 340.666,
+        "mean": 234.204
+      },
+      "bCreateTotalS": 117.1,
+      "bMigrationS": 1.81,
+      "bRelationsAdded": 42000,
+      "bCatalogGrowthMb": 150.1,
+      "aCreate": {
+        "n": 100,
+        "median": 3.474,
+        "p95": 7.075,
+        "mean": 4.25
+      },
+      "aMigrationS": 0.16
+    }
+  ]
+}

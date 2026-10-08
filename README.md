@@ -72,8 +72,8 @@ pnpm test             # contracts + web + API (unit, RLS integration, e2e, isola
 pnpm --filter @appraisal/api test:cov   # with coverage thresholds (NF-13)
 ```
 
-Current results (laptop, 2026-10-08): **119 API tests + 21 contracts + 11 web, all green**;
-API line coverage 93 % (tenancy-core 92 %, iam 90 %, configuration 99 %); 0 lint issues;
+Current results (laptop, 2026-10-08): **126 API tests + 21 contracts + 11 web, all green**;
+API line coverage 94 %, branches 81 %; 0 lint issues;
 0 boundary violations. The CI workflow ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs the same
 steps against a PostgreSQL 18 service; it has not run yet because nothing has been pushed.
 
@@ -118,11 +118,11 @@ steps against a PostgreSQL 18 service; it has not run yet because nothing has be
 | Id | Question | Result (details in [docs/experiments](docs/experiments/README.md)) |
 | --- | --- | --- |
 | E1 | Is isolation complete? | Every parameterised tenant route answers 404 to foreign ids, **also with the application filter off** (RLS alone); no foreign id in any collection; foreign references rejected; victim unchanged. |
-| E2 | Shared schema vs schema-per-tenant | see results |
+| E2 | Shared schema vs schema-per-tenant | provisioning ≈ 3.5 ms (A) vs ≈ 220 ms (B); one migration ≈ 0.1 s once (A) vs linear in N (1.8 s for 500 empty schemas); B adds 84 relations per tenant (+150 MB catalog at 500) |
 | E3 | Cost of RLS and the wrapper | RLS predicate ≈ 0 (folded into the index condition); transaction wrapper ≈ 0.2 ms; ORM ≈ 1.5 ms |
 | E4 | Noisy neighbour | see results |
 | E5 | Cost of customisation | level 3 strategy: 18-line class, 0 tenant branches, no deploy per customer |
-| E6 | Growth and tenant-first indexes | see results |
+| E6 | Growth and tenant-first indexes | 100 tenants, 3.2 M scores, 1 M audit rows: shipped indexes keep every query ≤ 4 ms p95 (NF-07). Tenant-first is decisive where the tenant is the selective column (audit page: 6–8 vs 104–154 pages, ~1 ms vs 16–24 ms, growing with tenant count); equal where another column is selective; no index → 240 ms |
 
 ## Decisions that changed during implementation
 

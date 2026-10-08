@@ -171,21 +171,20 @@ ${table(['query', 'tenant', 'index layout', 'median ms', 'p95 ms', 'buffers', 'a
 
 ## Reading
 
-- **Where the tenant is the selective column, tenant-first indexes are decisive.** The audit
-  page ("latest 50 of my tenant") with only the global primary key walks the id index newest-first
-  and lets RLS discard every other tenant's row. Its cost then depends on *where the tenant's rows
-  sit in the global order*: cheap for the newest tenant, a scan of most of the index for the oldest
-  one, i.e. it grows with the total number of tenants and with how quiet a tenant is. With
-  \`(tenant_id, id DESC)\` both tenants read the same handful of pages. Cycle aggregates show the
-  same effect in buffers (index-only scan of one tenant's slice).
+- **Where the tenant is the selective column, tenant-first indexes are decisive.** For the audit
+  page ("latest 50 of my tenant") the global primary key returns ids of *all* tenants newest-first
+  and RLS discards the others; with 100 tenants interleaved in time it must visit about 100 × 50
+  rows (≈ 100–150 pages) and takes 16–24 ms, a cost that grows linearly with the number of
+  tenants. With \`(tenant_id, id DESC)\` it reads 6–8 pages in about a millisecond, independent of
+  how many tenants exist. Cycle aggregates show the same effect in pages (3–4 vs 42–47).
 - **Where another column is already selective, a global index is as good.** A manager id or an
-  evaluation id identifies rows of one tenant anyway, so \`(manager_id)\` or \`(evaluation_id, …)\`
-  touch as few pages as the tenant-first versions; the differences in milliseconds are noise. The
-  tenant-first form is kept there for uniformity and because it also serves tenant-wide scans.
+  evaluation id only ever matches rows of one tenant, so \`(manager_id)\` or \`(evaluation_id, …)\`
+  touch as few pages as the tenant-first versions; the millisecond differences are noise. The
+  tenant-first form is kept for uniformity (one rule: every index starts with \`tenant_id\`).
 - **No index is catastrophic at this size**: all scores of one evaluation fall back to a parallel
-  sequential scan of 3.2 M rows (hundreds of ms, ~40 k pages) instead of ~1 ms.
+  sequential scan of 3.2 M rows (≈ 240 ms, 39 k pages) instead of ≈ 1 ms.
 - **NF-07** (p95 of list queries < 300 ms with 100 tenants of data): met with a wide margin by the
-  shipped layout (single-digit milliseconds p95 for every query, both tenants).
+  shipped layout (p95 ≤ 4 ms for every query, oldest and newest tenant).
 
 ## Plans (tenant-first layout)
 

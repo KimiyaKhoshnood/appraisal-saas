@@ -1,0 +1,31 @@
+@import 'tailwindcss';
+
+/*
+ * Theming contract (FE-01): components never hard-code brand colours. They use the `brand` and
+ * `brand-2` utilities, which resolve at runtime to CSS variables set from the tenant's branding.
+ */
+@theme inline {
+  --color-brand: var(--brand);
+  --color-brand-2: var(--brand-2);
+  --color-brand-soft: color-mix(in oklab, var(--brand) 10%, white);
+  --font-sans: 'Segoe UI', system-ui, -apple-system, 'Vazirmatn', Tahoma, 'Noto Sans Arabic', sans-serif;
+}
+
+:root {
+  --brand: #1d4ed8;
+  --brand-2: #0f766e;
+  color-scheme: light;
+}
+
+html {
+  font-family: var(--font-sans);
+}
+
+body {
+  @apply bg-slate-50 text-slate-900 antialiased;
+}
+
+/* Logical properties keep the layout correct in RTL (fa) without separate styles. */
+.focus-ring {
+  @apply focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand;
+}

@@ -10,3 +10,5 @@ apps/api/src/generated/
 experiments/results/raw/
 .vite/
 *.tsbuildinfo
+
+apps/web/dist/

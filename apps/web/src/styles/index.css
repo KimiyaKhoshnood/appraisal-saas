@@ -1,31 +1,127 @@
 @import 'tailwindcss';
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/vazirmatn';
 
 /*
- * Theming contract (FE-01): components never hard-code brand colours. They use the `brand` and
- * `brand-2` utilities, which resolve at runtime to CSS variables set from the tenant's branding.
+ * Design tokens.
+ *
+ * Theming contract (FE-01): components never hard-code a brand colour. The tenant's branding sets
+ * two CSS variables at runtime (--brand, --brand-2); every tint, ring and readable-on-dark
+ * variant is derived here with color-mix, so a new tenant needs zero CSS.
  */
-@theme inline {
-  --color-brand: var(--brand);
-  --color-brand-2: var(--brand-2);
-  --color-brand-soft: color-mix(in oklab, var(--brand) 10%, white);
-  --font-sans: 'Segoe UI', system-ui, -apple-system, 'Vazirmatn', Tahoma, 'Noto Sans Arabic', sans-serif;
-}
+@custom-variant dark (&:where(.dark, .dark *));
 
 :root {
   --brand: #1d4ed8;
   --brand-2: #0f766e;
+
+  --bg: #f7f7f8;
+  --surface: #ffffff;
+  --surface-2: #f4f4f5;
+  --border: #e4e4e7;
+  --text: #18181b;
+  --text-muted: #71717a;
+  --shadow-color: 240 6% 10%;
+  /* Brand-coloured text: the brand itself on light surfaces (WCAG-checked on save). */
+  --brand-text: var(--brand);
   color-scheme: light;
+}
+
+.dark {
+  --bg: #09090b;
+  --surface: #121215;
+  --surface-2: #1c1c21;
+  --border: #27272a;
+  --text: #f4f4f5;
+  --text-muted: #a1a1aa;
+  --shadow-color: 0 0% 0%;
+  /* On dark surfaces a saturated brand can be too dark to read: lighten it for text only. */
+  --brand-text: color-mix(in oklab, var(--brand) 55%, white);
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-brand: var(--brand);
+  --color-brand-2: var(--brand-2);
+  --color-brand-text: var(--brand-text);
+  --color-brand-soft: color-mix(in oklab, var(--brand) 12%, var(--surface));
+  --color-brand-softer: color-mix(in oklab, var(--brand) 6%, var(--surface));
+  --color-brand-ring: color-mix(in oklab, var(--brand) 45%, transparent);
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--border);
+  --color-fg: var(--text);
+  --color-muted: var(--text-muted);
+  --font-sans: 'Inter Variable', 'Vazirmatn Variable', ui-sans-serif, system-ui, sans-serif;
+  --shadow-card: 0 1px 2px hsl(var(--shadow-color) / 0.04), 0 4px 16px -4px hsl(var(--shadow-color) / 0.08);
+  --shadow-pop: 0 12px 40px -12px hsl(var(--shadow-color) / 0.35);
+  --animate-aurora: aurora 18s ease-in-out infinite alternate;
+  --animate-shimmer: shimmer 1.6s linear infinite;
+}
+
+/* Persian pages: Vazirmatn first, Persian digits are rendered by Intl, not by the font. */
+html[lang='fa'] {
+  --font-sans: 'Vazirmatn Variable', 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
 }
 
 html {
   font-family: var(--font-sans);
+  font-feature-settings: 'cv11', 'ss01';
 }
 
 body {
-  @apply bg-slate-50 text-slate-900 antialiased;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Logical properties keep the layout correct in RTL (fa) without separate styles. */
+::selection {
+  background: color-mix(in oklab, var(--brand) 25%, transparent);
+}
+
 .focus-ring {
-  @apply focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand;
+  @apply outline-none focus-visible:ring-2 focus-visible:ring-brand-ring focus-visible:ring-offset-2 focus-visible:ring-offset-surface;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Scrollbars that do not shout. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--text-muted) 40%, transparent) transparent;
+}
+
+@keyframes aurora {
+  0% {
+    transform: translate3d(-10%, -10%, 0) rotate(0deg) scale(1);
+  }
+  50% {
+    transform: translate3d(10%, 5%, 0) rotate(20deg) scale(1.15);
+  }
+  100% {
+    transform: translate3d(-5%, 10%, 0) rotate(-10deg) scale(1.05);
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+/* Motion is decoration: honour the user's operating-system preference everywhere. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
 }

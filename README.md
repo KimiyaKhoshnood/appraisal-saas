@@ -9,7 +9,7 @@ database, isolated in five layers down to PostgreSQL itself, and differing only 
 - **Tenant = signed JWT claim**, the sub-domain is a hint that must agree ([ADR-003](docs/adr/ADR-003-tenant-identification.md))
 - **AsyncLocalStorage + Prisma 7 client extension + transaction-local `set_config`** ([ADR-004](docs/adr/ADR-004-tenant-context-propagation.md))
 - **Configuration instead of code** — typed, layered (platform → plan → tenant), versioned ([ADR-006](docs/adr/ADR-006-typed-layered-configuration.md))
-- **React 19** front-end, one build for every tenant, branded and localised (incl. Persian RTL) at runtime
+- **React 19** front-end, one build for every tenant, branded and localised (incl. Persian RTL) at runtime; design system with light/dark themes, Motion animations, command palette ([architecture §8a](docs/architecture.md))
 
 > Architecture: [docs/architecture.md](docs/architecture.md) · ADRs: [docs/adr](docs/adr) ·
 > Experiments: [docs/experiments](docs/experiments/README.md) · Persian summary for the defence: [docs/report-fa.md](docs/report-fa.md)

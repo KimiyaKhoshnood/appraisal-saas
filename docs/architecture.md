@@ -191,6 +191,30 @@ double refresh from theft; absolute session lifetime of 30 days), httpOnly + Sam
 `Domain`, helmet headers, CORS limited to the platform's own sub-domains, CSV formula-injection
 neutralised, 100 kB body limit, RFC 9457 problem details with request id.
 
+## 8a. Front-end architecture
+
+```
+apps/web/src
+  main.tsx              host → app (tenant / platform / landing); MotionConfig, color mode, React Query
+  app/tenant            boot sequence (public branding → silent refresh → /me/context) and routes
+  features/<name>       one folder per feature: page(s) + api.ts (typed hooks); no cross-feature internals
+  shared/ui             design system: Button, Card, Field, Badge, Table, Stat, Rating, Segmented,
+                        Skeleton, QueryState, charts, CommandPalette, motion presets
+  shared/lib            api client, query-key factory, theming, color mode, host detection
+  shared/i18n           en/fa messages, Intl formatting (Persian calendar and digits for fa)
+```
+
+- **Design tokens** live in CSS variables; the tenant sets only `--brand` and `--brand-2`, every tint,
+  ring and dark-mode-readable variant is derived with `color-mix`. Light and dark themes, local
+  variable fonts (Inter, Vazirmatn), logical properties for RTL.
+- **Motion** (Motion for React): route transitions, staggered page entrance, an animated navigation
+  indicator (`layoutId`), count-up KPIs, charts that grow in, a score ring, and a journey stepper that
+  draws the *policy-pruned* state machine (2 steps for Globex, 4–5 for Acme). Everything honours
+  `prefers-reduced-motion` (MotionConfig + a CSS guard).
+- **UX**: skeletons instead of spinners, toasts for every mutation, Ctrl/⌘ K command palette built from
+  the same permission-filtered navigation, collapsible sidebar, mobile drawer.
+- **Data layer**: TanStack Query with a query-key factory; mutations invalidate by key prefix.
+
 ## 9. Known limitations
 
 - Rate limits are per instance (R replicas ⇒ up to R × the budget); Redis only when exactness matters.

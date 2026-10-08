@@ -1,13 +1,15 @@
 import { StrictMode, lazy, Suspense } from 'react';
 import { createRoot } from 'react-dom/client';
+import { MotionConfig } from 'motion/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ApiError } from './lib/api';
-import { detectApp } from './lib/host';
+import { ApiError } from './shared/lib/api';
+import { ColorModeProvider } from './shared/lib/color-mode';
+import { detectApp } from './shared/lib/host';
 import './styles/index.css';
 
-const TenantApp = lazy(() => import('./tenant/TenantApp'));
-const PlatformApp = lazy(() => import('./platform/PlatformApp'));
-const Landing = lazy(() => import('./Landing'));
+const TenantApp = lazy(() => import('./app/tenant/TenantApp'));
+const PlatformApp = lazy(() => import('./features/platform/PlatformApp'));
+const Landing = lazy(() => import('./features/landing/Landing'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -26,10 +28,15 @@ const Root = app.kind === 'tenant' ? TenantApp : app.kind === 'platform' ? Platf
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <Suspense fallback={null}>
-        <Root />
-      </Suspense>
-    </QueryClientProvider>
+    {/* Animations follow the operating system's "reduce motion" setting. */}
+    <MotionConfig reducedMotion="user">
+      <ColorModeProvider>
+        <QueryClientProvider client={queryClient}>
+          <Suspense fallback={null}>
+            <Root />
+          </Suspense>
+        </QueryClientProvider>
+      </ColorModeProvider>
+    </MotionConfig>
   </StrictMode>,
 );

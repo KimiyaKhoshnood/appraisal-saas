@@ -63,7 +63,10 @@ export function LoginForm({
     try {
       await onSubmit(email, password);
     } catch (err) {
-      setError(err instanceof ApiError && err.status === 429 ? t('auth.throttled') : t('auth.invalid'));
+      // Only a 4xx is about the credentials; a network failure or a 5xx from the dev proxy
+      // (API not running) must not be reported as a wrong password.
+      const status = err instanceof ApiError ? err.status : 0;
+      setError(status === 429 ? t('auth.throttled') : status >= 400 && status < 500 ? t('auth.invalid') : t('auth.unreachable'));
       setShake((s) => s + 1);
     } finally {
       setBusy(false);

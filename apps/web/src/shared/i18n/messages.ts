@@ -53,6 +53,7 @@ const en = {
   'auth.unknownTenant': 'This organisation does not exist or is not available.',
   'auth.invalid': 'Invalid e-mail or password',
   'auth.throttled': 'Too many attempts. Try again in a few minutes.',
+  'auth.unreachable': 'The server is not responding. Is the API running on port 3000?',
 
   'nav.dashboard': 'Dashboard',
   'nav.myEvaluations': 'My evaluations',
@@ -241,6 +242,7 @@ const fa: Record<MessageKey, string> = {
   'auth.unknownTenant': 'این سازمان وجود ندارد یا در دسترس نیست.',
   'auth.invalid': 'ایمیل یا رمز عبور نادرست است',
   'auth.throttled': 'تلاش‌های زیاد. چند دقیقه دیگر دوباره امتحان کنید.',
+  'auth.unreachable': 'سرور پاسخ نمی‌دهد. آیا API روی پورت ۳۰۰۰ در حال اجراست؟',
 
   'nav.dashboard': 'داشبورد',
   'nav.myEvaluations': 'ارزیابی‌های من',

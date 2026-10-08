@@ -13,6 +13,14 @@ export default defineConfig({
       include: ['src/**/*.ts'],
       exclude: ['src/generated/**', 'src/main.ts', 'src/**/index.ts'],
       reporter: ['text-summary', 'json-summary', 'html'],
+      // NF-13: the isolation-critical modules must stay above 80 % (measured: 90–99 %).
+      thresholds: {
+        lines: 85,
+        branches: 72,
+        'src/core/**': { lines: 85, branches: 75 },
+        'src/modules/iam/**': { lines: 80 },
+        'src/modules/configuration/**': { lines: 80 },
+      },
     },
     projects: [
       {

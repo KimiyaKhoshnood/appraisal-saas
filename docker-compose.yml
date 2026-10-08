@@ -1,0 +1,61 @@
+# NF-15: `docker compose up` brings up the whole system with seed data.
+#   http://acme.localhost:8080   http://globex.localhost:8080   http://admin.localhost:8080
+# Two API replicas behind nginx demonstrate the stateless backend (NF-10).
+name: appraisal
+
+x-db-env: &db-env
+  DATABASE_URL: postgresql://appraisal_app:app_dev_password@db:5432/appraisal
+  MIGRATOR_DATABASE_URL: postgresql://appraisal_migrator:migrator_dev_password@db:5432/appraisal
+  TEST_DATABASE_NAME: appraisal_test
+
+services:
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_PASSWORD: postgres
+    ports: ['5433:5432']
+    volumes: ['pgdata:/var/lib/postgresql']
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 2s
+      retries: 30
+
+  migrate:
+    build: { context: ., target: tools }
+    environment:
+      <<: *db-env
+      POSTGRES_SUPERUSER_URL: postgresql://postgres:postgres@db:5432/postgres
+      SEED: ${SEED:-true}
+      TENANT_JWT_SECRET: ${TENANT_JWT_SECRET:-compose-tenant-secret-change-me-0123456789}
+      PLATFORM_JWT_SECRET: ${PLATFORM_JWT_SECRET:-compose-platform-secret-change-me-012345678}
+      COOKIE_SECURE: 'false'
+      LOG_LEVEL: warn
+    depends_on:
+      db: { condition: service_healthy }
+    restart: 'no'
+
+  api:
+    build: { context: ., target: api }
+    environment:
+      <<: *db-env
+      BASE_DOMAIN: localhost
+      TRUST_PROXY: '1'
+      # Local HTTP demo only; production terminates TLS and keeps the default (true).
+      COOKIE_SECURE: 'false'
+      NODE_ENV: development
+      TENANT_JWT_SECRET: ${TENANT_JWT_SECRET:-compose-tenant-secret-change-me-0123456789}
+      PLATFORM_JWT_SECRET: ${PLATFORM_JWT_SECRET:-compose-platform-secret-change-me-012345678}
+      LOG_LEVEL: info
+    deploy:
+      replicas: 2
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+
+  web:
+    build: { context: ., target: web }
+    ports: ['8080:80']
+    depends_on:
+      api: { condition: service_healthy }
+
+volumes:
+  pgdata:

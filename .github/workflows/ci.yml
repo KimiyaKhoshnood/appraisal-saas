@@ -1,0 +1,75 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 2s --health-retries 30
+    env:
+      CI: 'true'
+      POSTGRES_SUPERUSER_URL: postgresql://postgres:postgres@localhost:5432/postgres
+      DATABASE_URL: postgresql://appraisal_app:ci_app_password@localhost:5432/appraisal
+      MIGRATOR_DATABASE_URL: postgresql://appraisal_migrator:ci_migrator_password@localhost:5432/appraisal
+      TEST_DATABASE_NAME: appraisal_test
+      TENANT_JWT_SECRET: ci-tenant-secret-0123456789abcdefghijklmn
+      PLATFORM_JWT_SECRET: ci-platform-secret-0123456789abcdefghijkl
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build shared contracts and Prisma client
+        run: |
+          pnpm --filter @appraisal/contracts build
+          pnpm --filter @appraisal/api exec prisma generate
+
+      - name: Static checks (types, lint incl. tenant-specific-code ban, module boundaries)
+        run: |
+          pnpm typecheck
+          pnpm lint
+          pnpm boundaries
+
+      - name: Database roles (migrator / runtime without BYPASSRLS)
+        run: pnpm --filter @appraisal/api db:bootstrap
+
+      - name: Tests (unit + RLS integration + e2e isolation matrix) with coverage gates
+        run: |
+          pnpm --filter @appraisal/contracts test
+          pnpm --filter @appraisal/web test
+          pnpm --filter @appraisal/api test:cov
+
+      - name: Migrations apply cleanly on an empty database
+        run: |
+          pnpm --filter @appraisal/api db:migrate
+          pnpm --filter @appraisal/api db:catalog
+
+      - name: Production builds
+        run: |
+          pnpm --filter @appraisal/api build
+          pnpm --filter @appraisal/web build
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage
+          path: apps/api/coverage

@@ -1,3 +1,4 @@
+import { RequestMethod } from '@nestjs/common';
 import type { Params } from 'nestjs-pino';
 import type { IncomingMessage } from 'node:http';
 import type { Env } from '../config/env';
@@ -11,6 +12,8 @@ type Req = IncomingMessage & { store?: RequestStore };
  */
 export function loggerConfig(env: Env): Params {
   return {
+    // Express 5 / path-to-regexp v8 wildcard syntax (the default '*' is legacy).
+    forRoutes: [{ path: '{*path}', method: RequestMethod.ALL }],
     pinoHttp: {
       level: env.LOG_LEVEL,
       genReqId: (req) => (req as Req).store?.requestId ?? 'unknown',
@@ -42,7 +45,8 @@ export function loggerConfig(env: Env): Params {
       },
       customLogLevel: (_req, res, err) => (err || res.statusCode >= 500 ? 'error' : res.statusCode >= 400 ? 'warn' : 'info'),
       autoLogging: { ignore: (req) => req.url === '/api/health' },
-      ...(env.NODE_ENV === 'development' ? { transport: { target: 'pino-pretty', options: { singleLine: true } } } : {}),
+      // Human-readable only on an interactive dev terminal; containers and CI always get JSON lines.
+      ...(env.NODE_ENV === 'development' && process.stdout.isTTY ? { transport: { target: 'pino-pretty', options: { singleLine: true } } } : {}),
     },
   };
 }

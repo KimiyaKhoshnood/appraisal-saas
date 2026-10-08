@@ -71,7 +71,8 @@ export const TenantContext = {
 
   /** Runs `fn` in platform scope (no tenant): scripts and the seed acting as a platform admin. */
   runPlatform<T>(actor: Actor, fn: () => Promise<T>): Promise<T> {
-    return storage.run({ requestId: 'system', ip: null, tenantId: null, actor, access: null, tx: undefined }, fn);
+    // `await` inside the scope: a lazy (Prisma) promise must start while the context is active.
+    return storage.run({ requestId: 'system', ip: null, tenantId: null, actor, access: null, tx: undefined }, async () => await fn());
   },
 
   /**
@@ -88,7 +89,7 @@ export const TenantContext = {
       access: null,
       tx: undefined,
     };
-    return storage.run(child, fn);
+    return storage.run(child, async () => await fn());
   },
 };
 

@@ -14,12 +14,13 @@ import { join } from 'node:path';
 import { Client } from 'pg';
 import { syncCatalog } from '../prisma/sync-catalog';
 
-export async function resetDatabase(options: { test?: boolean; seed?: boolean; quiet?: boolean } = {}): Promise<void> {
+export async function resetDatabase(options: { test?: boolean; database?: string; seed?: boolean; quiet?: boolean } = {}): Promise<void> {
   if (process.env.NODE_ENV === 'production') throw new Error('Refusing to reset a production database');
   const base = process.env.MIGRATOR_DATABASE_URL;
   if (!base) throw new Error('MIGRATOR_DATABASE_URL is not set');
   const url = new URL(base);
   if (options.test) url.pathname = `/${process.env.TEST_DATABASE_NAME ?? 'appraisal_test'}`;
+  if (options.database) url.pathname = `/${options.database}`;
   const dbName = url.pathname.slice(1);
   if (!/^appraisal(_[a-z0-9]+)?$/.test(dbName)) {
     throw new Error(`Refusing to reset "${dbName}": not an appraisal database`);

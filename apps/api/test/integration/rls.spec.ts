@@ -168,6 +168,9 @@ describe('row-level security at the database', () => {
     try {
       const out = await TenantContext.runAs(a.id, actor, async () => {
         const lazy = await single.transaction((tx) => tx.user.findMany({ select: { id: true } }));
+        // runAs must also start a lazily returned Prisma promise inside the tenant scope.
+        const viaRunAs = await TenantContext.runAs(a.id, actor, () => single.client.user.findMany({ select: { tenantId: true } }));
+        expect(new Set(viaRunAs.map((u) => u.tenantId))).toEqual(new Set([a.id]));
         const nested = await single.transaction(async () => {
           const n = await single.client.user.count();
           return single.transaction(async (tx) => n + (await tx.role.count()));

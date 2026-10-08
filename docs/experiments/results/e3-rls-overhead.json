@@ -1,0 +1,179 @@
+{
+  "env": {
+    "date": "2026-10-08T02:42:21.158Z",
+    "cpu": "13th Gen Intel(R) Core(TM) i5-13420H",
+    "cores": 12,
+    "memoryGb": 32,
+    "os": "win32 10.0.22621",
+    "node": "v24.14.0",
+    "postgres": "18.3",
+    "note": "PostgreSQL and the client on the same laptop (loopback); relative comparisons only."
+  },
+  "shape": {
+    "tenants": 50,
+    "users": 100,
+    "cycles": 4,
+    "competencies": 10
+  },
+  "iterations": 1000,
+  "runs": 5,
+  "results": {
+    "team list|V0 no RLS": {
+      "n": 5000,
+      "median": 0.277,
+      "p95": 0.692,
+      "mean": 0.334,
+      "runMedians": [
+        0.211,
+        0.257,
+        0.281,
+        0.442,
+        0.277
+      ]
+    },
+    "team list|V1 RLS only": {
+      "n": 5000,
+      "median": 0.238,
+      "p95": 0.59,
+      "mean": 0.293,
+      "runMedians": [
+        0.396,
+        0.238,
+        0.232,
+        0.198,
+        0.24
+      ]
+    },
+    "team list|V2 RLS + wrapper": {
+      "n": 5000,
+      "median": 0.484,
+      "p95": 1.2,
+      "mean": 0.586,
+      "runMedians": [
+        0.387,
+        0.513,
+        0.509,
+        0.386,
+        0.689
+      ]
+    },
+    "team list|V3 Prisma stack": {
+      "n": 5000,
+      "median": 1.966,
+      "p95": 3.689,
+      "mean": 2.091,
+      "runMedians": [
+        2.713,
+        1.152,
+        1.933,
+        1.598,
+        2.419
+      ]
+    },
+    "point lookup|V0 no RLS": {
+      "n": 5000,
+      "median": 0.193,
+      "p95": 0.521,
+      "mean": 0.227,
+      "runMedians": [
+        0.136,
+        0.135,
+        0.234,
+        0.154,
+        0.265
+      ]
+    },
+    "point lookup|V1 RLS only": {
+      "n": 5000,
+      "median": 0.229,
+      "p95": 0.69,
+      "mean": 0.288,
+      "runMedians": [
+        0.16,
+        0.161,
+        0.366,
+        0.262,
+        0.245
+      ]
+    },
+    "point lookup|V2 RLS + wrapper": {
+      "n": 5000,
+      "median": 0.411,
+      "p95": 1.028,
+      "mean": 0.522,
+      "runMedians": [
+        0.451,
+        0.377,
+        0.361,
+        0.464,
+        0.45
+      ]
+    },
+    "point lookup|V3 Prisma stack": {
+      "n": 5000,
+      "median": 1.806,
+      "p95": 3.668,
+      "mean": 2.026,
+      "runMedians": [
+        1.642,
+        1.397,
+        2.293,
+        2.376,
+        1.258
+      ]
+    },
+    "page of 50|V0 no RLS": {
+      "n": 5000,
+      "median": 0.315,
+      "p95": 0.774,
+      "mean": 0.383,
+      "runMedians": [
+        0.574,
+        0.309,
+        0.436,
+        0.213,
+        0.226
+      ]
+    },
+    "page of 50|V1 RLS only": {
+      "n": 5000,
+      "median": 0.259,
+      "p95": 0.753,
+      "mean": 0.353,
+      "runMedians": [
+        0.273,
+        0.251,
+        0.277,
+        0.356,
+        0.236
+      ]
+    },
+    "page of 50|V2 RLS + wrapper": {
+      "n": 5000,
+      "median": 0.505,
+      "p95": 1.122,
+      "mean": 0.598,
+      "runMedians": [
+        0.518,
+        0.442,
+        0.525,
+        0.536,
+        0.434
+      ]
+    },
+    "page of 50|V3 Prisma stack": {
+      "n": 5000,
+      "median": 2.035,
+      "p95": 4.342,
+      "mean": 2.321,
+      "runMedians": [
+        1.463,
+        2.127,
+        2.688,
+        1.394,
+        2.757
+      ]
+    }
+  },
+  "plan": "Index Scan using evaluation_by_cycle_status on evaluation (actual rows=9.00 loops=1)\n  Index Cond: ((tenant_id = (NULLIF(current_setting('app.tenant_id'::text, true), ''::text))::uuid) AND (cycle_id = '01a1195f-d79c-7309-b495-6ab300b51e43'::uuid))\n  Filter: (manager_id = '01a1195f-d5ee-72d0-8d24-ca8aa7a50e24'::uuid)\n  Rows Removed by Filter: 90\n  Index Searches: 1"
+}

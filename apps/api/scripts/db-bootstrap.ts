@@ -26,7 +26,11 @@ async function main() {
   const superUrl = parse(process.env.POSTGRES_SUPERUSER_URL, 'POSTGRES_SUPERUSER_URL');
   const migrator = parse(process.env.MIGRATOR_DATABASE_URL, 'MIGRATOR_DATABASE_URL');
   const runtime = parse(process.env.DATABASE_URL, 'DATABASE_URL');
-  const databases = [migrator.pathname.slice(1), process.env.TEST_DATABASE_NAME ?? 'appraisal_test'];
+  const databases = [
+    migrator.pathname.slice(1),
+    process.env.TEST_DATABASE_NAME ?? 'appraisal_test',
+    process.env.BENCH_DATABASE_NAME ?? 'appraisal_bench', // experiments E2–E6
+  ];
 
   const client = new Client({ connectionString: superUrl.toString() });
   await client.connect();

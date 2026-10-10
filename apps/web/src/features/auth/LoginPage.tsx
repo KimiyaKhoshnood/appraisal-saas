@@ -3,6 +3,8 @@ import { AnimatePresence, motion } from 'motion/react';
 import { ArrowRight, CircleCheck, Lock, Mail, ShieldCheck } from 'lucide-react';
 import { useI18n } from '../../shared/i18n/i18n';
 import { ApiError } from '../../shared/lib/api';
+import { DEMO_PASSWORD, demoAccountsFor } from '../../shared/lib/demo-accounts';
+import { detectApp } from '../../shared/lib/host';
 import { Button, Field, Input, fadeUp, stagger } from '../../shared/ui';
 
 /** Animated brand aurora: three blurred blobs in the tenant's colours (CSS animation, GPU only). */
@@ -55,6 +57,7 @@ export function LoginForm({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [shake, setShake] = useState(0);
+  const demo = demoAccountsFor(detectApp());
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -124,6 +127,28 @@ export function LoginForm({
         {t('auth.signIn')}
         <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5 rtl:rotate-180 rtl:group-hover:-translate-x-0.5" />
       </Button>
+      {demo.length > 0 && (
+        <div className="space-y-2 border-t border-line pt-4">
+          <p className="text-xs text-muted">{t('auth.demoAccounts', { password: DEMO_PASSWORD })}</p>
+          <div className="flex flex-wrap gap-1.5">
+            {demo.map((a) => (
+              <button
+                key={a.email}
+                type="button"
+                onClick={() => {
+                  setEmail(a.email);
+                  setPassword(DEMO_PASSWORD);
+                  setError(null);
+                }}
+                className="focus-ring rounded-full border border-line px-2.5 py-1 text-xs text-fg transition-colors hover:border-brand hover:bg-brand/10"
+                title={a.email}
+              >
+                <span className="font-medium">{a.email.split('@')[0]}</span> <span className="text-muted">· {a.role}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       {footer}
     </motion.form>
   );

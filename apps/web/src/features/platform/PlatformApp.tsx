@@ -66,7 +66,7 @@ export default function PlatformApp() {
         >
           <LoginForm
             title="Operator sign-in"
-            subtitle="admin host only"
+            subtitle="Platform operators only. Organisation users sign in on their own address, e.g. acme.localhost."
             logo={
               <span className="grid size-12 place-items-center rounded-2xl bg-gradient-to-br from-brand to-brand-2 text-white shadow-md shadow-brand/30">
                 <ServerCog className="size-6" />

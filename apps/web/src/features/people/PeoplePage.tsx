@@ -2,7 +2,7 @@ import { useDeferredValue, useState, type FormEvent } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Search, UserPlus } from 'lucide-react';
+import { KeyRound, Search, UserPlus } from 'lucide-react';
 import type { Page as PageOf, RoleView, UserView } from '@appraisal/contracts';
 import { useMe } from '../../app/tenant/session';
 import { useI18n } from '../../shared/i18n/i18n';
@@ -18,6 +18,7 @@ export default function PeoplePage() {
   const [search, setSearch] = useState('');
   const deferred = useDeferredValue(search);
   const [adding, setAdding] = useState(false);
+  const [passwordFor, setPasswordFor] = useState<string | null>(null);
   const users = useInfiniteQuery({
     queryKey: qk.users(deferred),
     queryFn: ({ pageParam }) =>
@@ -66,7 +67,14 @@ export default function PeoplePage() {
                     <Avatar name={u.fullName} size="sm" />
                     <div className="min-w-0">
                       <div className="truncate font-medium text-fg">{u.fullName}</div>
-                      <div className="truncate text-xs text-muted">{u.email}</div>
+                      <div className="flex items-center gap-2 truncate text-xs text-muted">
+                        {u.email}
+                        {!u.hasPassword && (
+                          <span title={t('people.noPasswordHint')}>
+                            <Badge tone="MANAGER_SUBMITTED">{t('people.noPassword')}</Badge>
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </Td>
@@ -86,10 +94,16 @@ export default function PeoplePage() {
                 <Td>{u.active ? <Badge tone="ACTIVE" dot>{t('status.ACTIVE')}</Badge> : <Badge tone="SUSPENDED" dot>{t('people.inactive')}</Badge>}</Td>
                 <Td className="text-end">
                   {can('user:write') && u.id !== me.user.id && (
-                    <Button size="sm" variant="ghost" onClick={() => toggle.mutate(u)}>
-                      {u.active ? t('people.deactivate') : t('people.activate')}
-                    </Button>
+                    <div className="flex items-center justify-end gap-1">
+                      <Button size="sm" variant="ghost" icon={<KeyRound className="size-3.5" />} onClick={() => setPasswordFor((id) => (id === u.id ? null : u.id))}>
+                        {t('people.setPassword')}
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => toggle.mutate(u)}>
+                        {u.active ? t('people.deactivate') : t('people.activate')}
+                      </Button>
+                    </div>
                   )}
+                  <AnimatePresence>{passwordFor === u.id && <SetPassword user={u} onDone={() => setPasswordFor(null)} />}</AnimatePresence>
                 </Td>
               </Tr>
             ))}
@@ -206,5 +220,49 @@ function NewUser({ roles, onDone }: { roles: RoleView[]; onDone: () => void }) {
         )}
       </Card>
     </motion.div>
+  );
+}
+
+/** An administrator sets a temporary password (e.g. for users restored from an export, ADR-016). */
+function SetPassword({ user, onDone }: { user: UserView; onDone: () => void }) {
+  const { t } = useI18n();
+  const qc = useQueryClient();
+  const [password, setPassword] = useState('');
+  const save = useMutation({
+    mutationFn: () => tenantApi.post<UserView>(`/api/users/${user.id}/password`, { password }),
+    onSuccess: () => {
+      toast.success(t('people.passwordSet'));
+      void qc.invalidateQueries({ queryKey: qk.usersAll });
+      onDone();
+    },
+  });
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    save.mutate();
+  };
+  return (
+    <motion.form
+      onSubmit={submit}
+      initial={{ opacity: 0, height: 0 }}
+      animate={{ opacity: 1, height: 'auto' }}
+      exit={{ opacity: 0, height: 0 }}
+      className="mt-2 flex items-center justify-end gap-2 overflow-hidden"
+    >
+      <Input
+        aria-label={t('people.newPassword')}
+        placeholder={t('people.newPassword')}
+        type="password"
+        autoComplete="new-password"
+        minLength={10}
+        required
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        className="h-8 w-56 text-xs"
+      />
+      <Button size="sm" type="submit" busy={save.isPending}>
+        {t('app.save')}
+      </Button>
+      {save.error && <span className="text-xs text-red-600 dark:text-red-400">{save.error.message}</span>}
+    </motion.form>
   );
 }

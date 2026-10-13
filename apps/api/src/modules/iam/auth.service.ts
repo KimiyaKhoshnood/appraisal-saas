@@ -11,6 +11,7 @@ import {
   TooManyRequestsError,
   UnauthorizedError,
   dummyPasswordHash,
+  isUsablePasswordHash,
   newOpaqueSecret,
   parseOpaqueToken,
   safeEqualHex,
@@ -56,7 +57,8 @@ export class AuthService {
 
     const user = await this.db.client.user.findUnique({ where: { tenantId_email: { tenantId, email: input.email } } });
     // Always run argon2 so response time does not reveal whether the email exists.
-    const ok = await verifyPassword(user?.passwordHash ?? (await dummyPasswordHash()), input.password);
+    const stored = user && isUsablePasswordHash(user.passwordHash) ? user.passwordHash : await dummyPasswordHash();
+    const ok = (await verifyPassword(stored, input.password)) && stored === user?.passwordHash;
     if (!user || !ok || !user.active) {
       await this.events.publishSecurity({
         type: 'security.login_failed',

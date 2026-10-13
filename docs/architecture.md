@@ -220,9 +220,10 @@ apps/web/src
 ## 9. Known limitations
 
 - Rate limits are per instance (R replicas ⇒ up to R × the budget); Redis only when exactness matters.
-- Per-tenant **export** exists (ADR-013: RLS-only, one read-only snapshot, checksummed manifest);
-  per-tenant **restore** into a fresh tenant is not implemented yet, and the export is built in
-  memory (streaming NDJSON is the growth path for very large tenants).
+- Per-tenant **export** (ADR-013) and **restore into a new tenant** (ADR-016: verified digests,
+  every id re-keyed, FK order from the catalog, RLS `WITH CHECK` on every insert) exist; both are
+  built in memory (streaming NDJSON is the growth path for very large tenants). Restored users
+  need a new password from their admin, because password hashes are never exported.
 - Users belong to exactly one tenant; SSO/SAML, e-mail delivery, file uploads, custom domains out of scope.
 - Prisma 7's adapter executes some relation sub-queries concurrently inside a transaction, which
   `pg` 8 reports as a deprecation warning; harmless today, to be revisited with `pg` 9.

@@ -26,7 +26,7 @@ apps/api            NestJS API (modular monolith)
   experiments/        E2–E6 measurement scripts
 apps/web            React + Vite + TanStack Query + Tailwind 4
 packages/contracts  Zod schemas, permission/feature/plan catalogs, policy resolution (shared)
-docs/               architecture, ADR-001…015, experiment results
+docs/               architecture, ADR-001…016, experiment results
 ```
 
 ## Run it locally (native)
@@ -72,7 +72,7 @@ pnpm test             # contracts + web + API (unit, RLS integration, e2e, isola
 pnpm --filter @appraisal/api test:cov   # with coverage thresholds (NF-13)
 ```
 
-Current results (laptop, 2026-10-13): **160 API tests + 21 contracts + 11 web, all green**;
+Current results (laptop, 2026-10-14): **173 API tests + 21 contracts + 11 web, all green**;
 API line coverage 95 %, branches 82 %; 0 lint issues;
 0 boundary violations. The CI workflow ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs the same
 steps against a PostgreSQL 18 service; it has not run yet because nothing has been pushed.
@@ -100,6 +100,7 @@ steps against a PostgreSQL 18 service; it has not run yet because nothing has be
 | AD-01/02/03 audit, security events, append-only | `audit/`, migration triggers + grants | `rls.spec.ts`, e2e |
 | FE-01/02/03 theming, navigation, states | `apps/web` | `web.spec.ts`, manual demo |
 | DP-01 tenant data export (portability) | `core/portability`, `portability/`, per-module registration | `portability.e2e.spec.ts` (ADR-013) |
+| DP-03 restore an export into a new tenant (verified, re-keyed) | `TenantExportRegistry.importIntoCurrentTenant`, `platform/tenants.service.ts` `restore`, console Restore tab, `POST /users/:id/password` | `restore.e2e.spec.ts`, E1 matrix (ADR-016) |
 | DP-02 no lost updates (ETag / If-Match → 412) | `core/http/conditional.ts`, `evaluation/` | `concurrency.e2e.spec.ts` (ADR-014) |
 | NF-16 per-tenant observability (RED metrics, bounded labels) | `core/observability`, `GET /api/metrics`, `GET /api/platform/tenant-health`, console health strip | `tenant-metrics.spec.ts`, `observability.e2e.spec.ts` (ADR-015) |
 | NF-01 no cross-tenant leak | five layers | E1 matrix (both modes) |

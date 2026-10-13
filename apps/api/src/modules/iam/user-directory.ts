@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { ConflictError, Database, TenantContext, hashPassword } from '../../core';
+import { BusinessRuleError, ConflictError, Database, TenantContext, hashPassword } from '../../core';
 import { RolesService } from './roles.service';
 
 export interface DirectoryUser {
@@ -64,6 +64,22 @@ export class IamProvisioning {
       select: { id: true },
     });
     return { adminUserId: user.id, roleIds };
+  }
+
+  /**
+   * After a restore: gives the named administrator of the archive a password so the organisation
+   * can sign in. Refused unless that user exists, is active and holds the Tenant admin role.
+   */
+  async completeRestore(email: string, password: string): Promise<string> {
+    // Authorisation-cache counter: internal, never exported, so a restored tenant starts at 1.
+    await this.db.client.tenantAuthzState.create({ data: { tenantId: TenantContext.requireTenantId(), version: 1 } });
+    const user = await this.db.client.user.findFirst({
+      where: { email, active: true, roles: { some: { role: { systemKey: 'TENANT_ADMIN' } } } },
+      select: { id: true },
+    });
+    if (!user) throw new BusinessRuleError('ADMIN_NOT_IN_ARCHIVE', 'No active Tenant admin with this e-mail in the archive');
+    await this.db.client.user.update({ where: { id: user.id }, data: { passwordHash: await hashPassword(password) } });
+    return user.id;
   }
 
   /** Seed/demo helper: creates a user with the given system roles in the current tenant. */

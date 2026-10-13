@@ -2,9 +2,11 @@ import { Controller, Get, HttpCode, Inject, Post, Put, Req, Res } from '@nestjs/
 import {
   changePlanSchema,
   createTenantSchema,
+  importTenantSchema,
   loginSchema,
   pageQuerySchema,
   type CreateTenantInput,
+  type ImportTenantInput,
   type LoginInput,
   type PageQuery,
   type PlanCode,
@@ -102,6 +104,13 @@ export class PlatformController {
   @PlatformRoute()
   create(@ValidBody(createTenantSchema) body: CreateTenantInput) {
     return this.tenants.create(body);
+  }
+
+  /** Restore an export into a new tenant. Larger body limit for this route only (configure-app). */
+  @Post('tenants/import')
+  @PlatformRoute()
+  restore(@ValidBody(importTenantSchema) body: ImportTenantInput) {
+    return this.tenants.restore(body);
   }
 
   @Get('tenants/:id')

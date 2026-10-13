@@ -34,6 +34,7 @@
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
     "cookie-parser": "^1.4.7",
+    "express": "5.2.1",
     "helmet": "^8.1.0",
     "nestjs-pino": "^4.4.0",
     "pg": "^8.16.0",

@@ -8,6 +8,7 @@ import {
   NotFoundError,
   TenantContext,
   hashPassword,
+  isUsablePasswordHash,
   keysetArgs,
   toPage,
 } from '../../core';
@@ -19,6 +20,7 @@ const userSelect = {
   email: true,
   fullName: true,
   active: true,
+  passwordHash: true,
   createdAt: true,
   roles: { select: { role: { select: { id: true, name: true } } } },
 } as const;
@@ -28,6 +30,7 @@ type UserRow = {
   email: string;
   fullName: string;
   active: boolean;
+  passwordHash: string;
   createdAt: Date;
   roles: { role: { id: string; name: string } }[];
 };
@@ -38,6 +41,7 @@ function toView(u: UserRow): UserView {
     email: u.email,
     fullName: u.fullName,
     active: u.active,
+    hasPassword: isUsablePasswordHash(u.passwordHash),
     roles: u.roles.map((r) => r.role),
     createdAt: u.createdAt.toISOString(),
   };
@@ -167,6 +171,23 @@ export class UsersService {
         entityId: id,
         metadata: { before: before.map((r) => r.roleId), after: roleIds },
       });
+      return this.get(id);
+    });
+  }
+
+  /**
+   * An administrator sets a (temporary) password, e.g. for users restored from an archive. Same
+   * ceiling as every other user change: only for users no more privileged than the caller.
+   * Every session of the user ends; the password never reaches the audit log.
+   */
+  async setPassword(id: string, password: string): Promise<UserView> {
+    const passwordHash = await hashPassword(password);
+    return this.db.transaction(async (tx) => {
+      await this.requireUser(id);
+      await this.grants.assertCanManageUser(id);
+      await tx.user.update({ where: { id }, data: { passwordHash } });
+      await tx.refreshToken.updateMany({ where: { userId: id, revokedAt: null }, data: { revokedAt: new Date() } });
+      await this.events.publish({ type: 'iam.user.password_set', category: 'SECURITY', entityType: 'user', entityId: id });
       return this.get(id);
     });
   }

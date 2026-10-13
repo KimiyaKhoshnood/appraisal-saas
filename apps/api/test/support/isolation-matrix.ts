@@ -15,6 +15,8 @@ const ANY_UUID = '01960000-0000-7000-8000-000000000000';
 export const SAMPLE_BODIES: Record<string, (ctx: { ownRoleId: string }) => unknown> = {
   'PATCH /api/users/:id': () => ({ fullName: 'Hijacked Name' }),
   'PUT /api/users/:id/roles': ({ ownRoleId }) => ({ roleIds: [ownRoleId] }),
+  // Account takeover attempt: setting the password of another tenant's user.
+  'POST /api/users/:id/password': () => ({ password: 'Hijacked-pass-2026' }),
   'PATCH /api/roles/:id': () => ({ name: 'Hijacked role' }),
   'PATCH /api/org/departments/:id': () => ({ name: 'Hijacked department' }),
   'PUT /api/org/employees/:userId': () => ({ jobTitle: 'Hijacked title' }),

@@ -51,6 +51,33 @@ export const createTenantSchema = z
   .strict();
 export type CreateTenantInput = z.infer<typeof createTenantSchema>;
 
+/**
+ * Restore an organisation from its export into a new tenant (ADR-016). The archive is validated
+ * structurally here and verified against its own manifest by the server.
+ */
+export const tenantArchiveSchema = z.looseObject({
+  format: z.literal('appraisal-tenant-export'),
+  version: z.literal(1),
+  tenantId: z.uuid(),
+  manifest: z
+    .array(z.object({ section: z.string().max(80), rows: z.number().int().min(0), sha256: z.string().regex(/^[0-9a-f]{64}$/) }).strict())
+    .max(100),
+  data: z.record(z.string().max(63), z.array(z.record(z.string(), z.unknown()))),
+});
+
+export const importTenantSchema = z
+  .object({
+    name: z.string().trim().min(2).max(120),
+    slug: slugSchema,
+    /** Defaults to the plan recorded in the archive. */
+    plan: z.enum(PLAN_CODES as [string, ...string[]]).optional(),
+    /** An active Tenant admin of the archive; gets this password, everyone else none yet. */
+    admin: z.object({ email, password }).strict(),
+    archive: tenantArchiveSchema,
+  })
+  .strict();
+export type ImportTenantInput = z.infer<typeof importTenantSchema>;
+
 export const changePlanSchema = z
   .object({ plan: z.enum(PLAN_CODES as [string, ...string[]]) })
   .strict();

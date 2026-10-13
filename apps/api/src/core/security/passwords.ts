@@ -12,6 +12,14 @@ const ARGON2_OPTIONS = {
   parallelism: 1,
 } as const;
 
+/**
+ * Stored for users restored from an archive (password hashes are never exported): no password
+ * verifies against it. Login treats it like an unknown user (dummy hash, same timing) until an
+ * administrator sets a password.
+ */
+export const UNUSABLE_PASSWORD_HASH = '!no-password';
+export const isUsablePasswordHash = (hashed: string) => !hashed.startsWith('!');
+
 export function hashPassword(plain: string): Promise<string> {
   return hash(plain, ARGON2_OPTIONS);
 }

@@ -3,11 +3,22 @@ import {
   PLANS,
   PLAN_CODES,
   type CreateTenantInput,
+  type ImportTenantInput,
   type PlanCode,
   type TenantStatus,
   type TenantSummary,
 } from '@appraisal/contracts';
-import { BusinessRuleError, ConflictError, Database, EventBus, NotFoundError, TenantContext } from '../../core';
+import {
+  BusinessRuleError,
+  ConflictError,
+  Database,
+  EventBus,
+  NotFoundError,
+  TenantContext,
+  TenantExportRegistry,
+  type ImportArchive,
+  type ImportReport,
+} from '../../core';
 import { ConfigurationService } from '../configuration';
 import { IamProvisioning } from '../iam';
 import { PlatformAuditService } from './platform-audit.service';
@@ -30,6 +41,11 @@ export interface ProvisionResult {
   durationMs: number;
 }
 
+export interface RestoreResult extends ProvisionResult {
+  /** Counts and digests only: the platform never returns or displays the organisation's data. */
+  report: ImportReport;
+}
+
 /**
  * Tenant lifecycle (PL-01..PL-03). Adding a customer is adding data: one transaction, no
  * deployment, no restart, no new schema. The platform never bypasses RLS to do it: it *enters*
@@ -44,6 +60,7 @@ export class TenantsService {
     private readonly iam: IamProvisioning,
     private readonly platformAudit: PlatformAuditService,
     private readonly events: EventBus,
+    private readonly portability: TenantExportRegistry,
   ) {}
 
   async list(): Promise<TenantSummary[]> {
@@ -99,6 +116,41 @@ export class TenantsService {
       }),
     );
     return { tenant: toSummary(result.tenant), adminUserId: result.adminUserId, durationMs: Math.round(performance.now() - started) };
+  }
+
+  /**
+   * Restores an organisation's export into a **new** tenant (ADR-016): the growth path for moving
+   * a heavy tenant to its own database, recovery from a customer-held backup, or a sandbox copy.
+   * One transaction in the new tenant's context: tenant row, archive, admin password, ACTIVE, or
+   * nothing at all. The operator transports the archive; the API answers with counts only.
+   */
+  async restore(input: ImportTenantInput): Promise<RestoreResult> {
+    const started = performance.now();
+    const archivedPlan = (input.archive as { tenant?: { plan?: unknown } }).tenant?.plan;
+    const plan = (input.plan ?? (PLAN_CODES.includes(archivedPlan as PlanCode) ? archivedPlan : 'STARTER')) as PlanCode;
+    if (await this.db.client.tenant.findUnique({ where: { slug: input.slug }, select: { id: true } })) {
+      throw new ConflictError('SLUG_TAKEN', 'This sub-domain is already in use');
+    }
+    const [row] = await this.db.base.$queryRaw<{ id: string }[]>`SELECT uuidv7()::text AS id`;
+    const id = row!.id;
+
+    const result = await TenantContext.runAs(id, TenantContext.actor(), () =>
+      this.db.transaction(
+        async (tx) => {
+          await tx.tenant.create({ data: { id, name: input.name, slug: input.slug, planCode: plan, status: 'PROVISIONING' } });
+          await tx.tenantDirectory.create({ data: { tenantId: id, shard: 'primary' } });
+          const report = await this.portability.importIntoCurrentTenant(input.archive as unknown as ImportArchive);
+          const adminUserId = await this.iam.completeRestore(input.admin.email, input.admin.password);
+          const tenant = await tx.tenant.update({ where: { id }, data: { status: 'ACTIVE' } });
+          const metadata = { plan, slug: input.slug, sourceTenantId: report.sourceTenantId, rows: report.rows, manifestSha256: report.manifestSha256 };
+          await this.events.publish({ type: 'platform.tenant.restored', category: 'CHANGE', entityType: 'tenant', entityId: id, metadata });
+          await this.platformAudit.write({ type: 'platform.tenant.restored', category: 'CHANGE', entityType: 'tenant', entityId: id, metadata });
+          return { tenant, adminUserId, report };
+        },
+        { timeoutMs: 120_000 },
+      ),
+    );
+    return { tenant: toSummary(result.tenant), adminUserId: result.adminUserId, report: result.report, durationMs: Math.round(performance.now() - started) };
   }
 
   async setStatus(id: string, status: 'ACTIVE' | 'SUSPENDED'): Promise<TenantSummary> {

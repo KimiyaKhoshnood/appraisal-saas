@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Toaster, toast } from 'sonner';
-import { Activity, Building2, ExternalLink, LogOut, Moon, Plus, Rocket, ScrollText, ServerCog, Sun, Timer } from 'lucide-react';
+import { Activity, ArchiveRestore, Building2, ExternalLink, LogOut, Moon, Plus, Rocket, ScrollText, ServerCog, Sun, Timer } from 'lucide-react';
 import { PLAN_CODES, PLANS, type CreateTenantInput, type Page as PageOf, type TenantSummary } from '@appraisal/contracts';
 import { I18nProvider, useI18n } from '../../shared/i18n/i18n';
 import { ApiError, platformApi } from '../../shared/lib/api';
@@ -34,6 +34,7 @@ import {
   spring,
 } from '../../shared/ui';
 import { AuthLayout, HeroPoints, LoginForm } from '../auth/LoginPage';
+import { RestoreTenant } from './RestoreTenant';
 
 const CONSOLE_BRANDING = { appName: 'Platform console', primaryColor: '#4f46e5', secondaryColor: '#0f766e', locale: 'en' as const };
 
@@ -91,7 +92,7 @@ function ToasterThemed() {
   return <Toaster theme={resolved} position="bottom-right" richColors closeButton />;
 }
 
-type Tab = 'tenants' | 'new' | 'audit';
+type Tab = 'tenants' | 'new' | 'restore' | 'audit';
 
 function Console({ onLogout }: { onLogout: () => void }) {
   const [tab, setTab] = useState<Tab>('tenants');
@@ -99,6 +100,7 @@ function Console({ onLogout }: { onLogout: () => void }) {
   const tabs: { id: Tab; label: string; icon: ReactNode }[] = [
     { id: 'tenants', label: 'Tenants', icon: <Building2 className="size-4" /> },
     { id: 'new', label: 'New tenant', icon: <Plus className="size-4" /> },
+    { id: 'restore', label: 'Restore', icon: <ArchiveRestore className="size-4" /> },
     { id: 'audit', label: 'Platform audit', icon: <ScrollText className="size-4" /> },
   ];
   return (
@@ -139,6 +141,7 @@ function Console({ onLogout }: { onLogout: () => void }) {
           <motion.div key={tab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.2 }}>
             {tab === 'tenants' && <Tenants onNew={() => setTab('new')} />}
             {tab === 'new' && <NewTenant onCreated={() => setTab('tenants')} />}
+            {tab === 'restore' && <RestoreTenant onRestored={() => setTab('tenants')} />}
             {tab === 'audit' && <PlatformAudit />}
           </motion.div>
         </AnimatePresence>

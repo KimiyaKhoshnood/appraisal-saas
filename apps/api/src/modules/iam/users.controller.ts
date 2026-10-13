@@ -3,6 +3,7 @@ import {
   createRoleSchema,
   createUserSchema,
   pageQuerySchema,
+  setPasswordSchema,
   setUserRolesSchema,
   updateRoleSchema,
   updateUserSchema,
@@ -42,6 +43,13 @@ export class UsersController {
   @RequirePermission('user:write')
   update(@IdParam() id: string, @ValidBody(updateUserSchema) body: z.infer<typeof updateUserSchema>) {
     return this.users.update(id, body);
+  }
+
+  @Post(':id/password')
+  @HttpCode(200)
+  @RequirePermission('user:write')
+  setPassword(@IdParam() id: string, @ValidBody(setPasswordSchema) body: { password: string }) {
+    return this.users.setPassword(id, body.password);
   }
 
   @Post(':id/deactivate')

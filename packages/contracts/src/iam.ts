@@ -34,6 +34,9 @@ export const updateUserSchema = z
   })
   .strict();
 
+export const setPasswordSchema = z.object({ password }).strict();
+export type SetPasswordInput = z.infer<typeof setPasswordSchema>;
+
 export const setUserRolesSchema = z.object({ roleIds: z.array(uuid).min(1).max(10) }).strict();
 
 export const createRoleSchema = z
@@ -50,6 +53,8 @@ export interface UserView {
   email: string;
   fullName: string;
   active: boolean;
+  /** False for users restored from an archive until an administrator sets a password. */
+  hasPassword: boolean;
   roles: { id: string; name: string }[];
   createdAt: string;
 }

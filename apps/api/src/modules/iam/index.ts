@@ -1,5 +1,5 @@
 import { Module, type OnModuleInit } from '@nestjs/common';
-import { TenantExportRegistry } from '../../core';
+import { TenantExportRegistry, UNUSABLE_PASSWORD_HASH } from '../../core';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { AuthzService } from './authz.service';
@@ -22,7 +22,13 @@ export class IamModule implements OnModuleInit {
   onModuleInit(): void {
     const registry = this.exportRegistry;
     // refresh_token is not exported: session secrets are not the organisation's data.
-    registry.register({ module: 'iam', table: 'app_user', omit: ['password_hash'] });
+    registry.register({
+      module: 'iam',
+      table: 'app_user',
+      omit: ['password_hash'],
+      // Restored users cannot sign in until an administrator sets a password.
+      importRow: (row) => ({ ...row, password_hash: UNUSABLE_PASSWORD_HASH }),
+    });
     registry.register({ module: 'iam', table: 'role' });
     registry.register({ module: 'iam', table: 'role_permission' });
     registry.register({ module: 'iam', table: 'user_role' });

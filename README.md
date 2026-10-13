@@ -72,8 +72,8 @@ pnpm test             # contracts + web + API (unit, RLS integration, e2e, isola
 pnpm --filter @appraisal/api test:cov   # with coverage thresholds (NF-13)
 ```
 
-Current results (laptop, 2026-10-08): **126 API tests + 21 contracts + 11 web, all green**;
-API line coverage 94 %, branches 81 %; 0 lint issues;
+Current results (laptop, 2026-10-13): **160 API tests + 21 contracts + 11 web, all green**;
+API line coverage 95 %, branches 82 %; 0 lint issues;
 0 boundary violations. The CI workflow ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs the same
 steps against a PostgreSQL 18 service; it has not run yet because nothing has been pushed.
 

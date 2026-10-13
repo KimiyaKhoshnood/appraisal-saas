@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Toaster, toast } from 'sonner';
-import { Building2, ExternalLink, LogOut, Moon, Plus, Rocket, ScrollText, ServerCog, Sun, Timer } from 'lucide-react';
+import { Activity, Building2, ExternalLink, LogOut, Moon, Plus, Rocket, ScrollText, ServerCog, Sun, Timer } from 'lucide-react';
 import { PLAN_CODES, PLANS, type CreateTenantInput, type Page as PageOf, type TenantSummary } from '@appraisal/contracts';
 import { I18nProvider, useI18n } from '../../shared/i18n/i18n';
 import { ApiError, platformApi } from '../../shared/lib/api';
@@ -166,6 +166,12 @@ function Tenants({ onNew }: { onNew: () => void }) {
       refresh();
     },
   });
+  const health = useQuery({
+    queryKey: qk.platform.health,
+    queryFn: () => platformApi.get<HealthReport>('/api/platform/tenant-health'),
+    refetchInterval: 5_000,
+  });
+  const healthOf = (slug: string) => health.data?.tenants.find((h) => h.tenant === slug);
   const active = q.data?.filter((t) => t.status === 'ACTIVE').length ?? 0;
   return (
     <Page>
@@ -200,7 +206,8 @@ function Tenants({ onNew }: { onNew: () => void }) {
                 </Select>
                 <span className="text-xs text-muted">since {formatDate(t.createdAt)}</span>
               </div>
-              <div className="mt-4 flex justify-end border-t border-line pt-4">
+              <div className="mt-4 flex items-center justify-between gap-3 border-t border-line pt-4">
+                <HealthStrip h={healthOf(t.slug)} />
                 {t.status === 'ACTIVE' ? (
                   <Button size="sm" variant="danger" busy={act.isPending && act.variables?.id === t.id} onClick={() => act.mutate({ id: t.id, action: 'suspend' })}>
                     Suspend
@@ -217,6 +224,42 @@ function Tenants({ onNew }: { onNew: () => void }) {
       </QueryState>
       {(act.error ?? plan.error) && <ErrorBox error={act.error ?? plan.error} />}
     </Page>
+  );
+}
+
+interface TenantHealth {
+  tenant: string;
+  requests: number;
+  requestsPerMinute: number;
+  errorRate: number;
+  throttled: number;
+  p95Ms: number | null;
+}
+interface HealthReport {
+  windowMinutes: number;
+  tenants: TenantHealth[];
+}
+
+/**
+ * Last five minutes of a tenant's traffic on this instance (noisy-neighbour watch, experiment E4):
+ * red when it errors or is being throttled, amber when p95 exceeds the 250 ms target.
+ */
+function HealthStrip({ h }: { h: TenantHealth | undefined }) {
+  if (!h || h.requests === 0) return <span className="text-xs text-muted">No traffic in the last 5 min</span>;
+  const tone = h.errorRate > 0.01 || h.throttled > 0 ? 'bg-red-500' : (h.p95Ms ?? 0) > 250 ? 'bg-amber-500' : 'bg-emerald-500';
+  return (
+    <div className="flex min-w-0 items-center gap-2 text-xs text-muted" title="Last 5 minutes on this instance">
+      <span className="relative flex size-2 shrink-0">
+        <span className={cn('absolute inline-flex size-full animate-ping rounded-full opacity-60', tone)} />
+        <span className={cn('relative inline-flex size-2 rounded-full', tone)} />
+      </span>
+      <Activity className="size-3.5 shrink-0" />
+      <span className="truncate tabular">
+        {h.requestsPerMinute}/min · p95 {h.p95Ms ?? '—'} ms
+        {h.errorRate > 0 && ` · ${(h.errorRate * 100).toFixed(1)}% 5xx`}
+        {h.throttled > 0 && ` · ${h.throttled} throttled`}
+      </span>
+    </div>
   );
 }
 

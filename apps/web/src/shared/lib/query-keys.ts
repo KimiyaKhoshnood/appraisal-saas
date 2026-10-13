@@ -25,5 +25,6 @@ export const qk = {
   platform: {
     tenants: ['platform', 'tenants'] as const,
     audit: ['platform', 'audit'] as const,
+    health: ['platform', 'tenant-health'] as const,
   },
 };

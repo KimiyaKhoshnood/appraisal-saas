@@ -24,6 +24,8 @@ const envSchema = z
     STATEMENT_TIMEOUT_MS: z.coerce.number().int().min(0).default(5000),
     DB_POOL_MAX: z.coerce.number().int().min(1).max(200).default(10),
     TENANCY_APP_FILTER: z.enum(['on', 'off']).default('on'),
+    /** Bearer token for `/api/metrics` (Prometheus scrape). Unset: the endpoint does not exist (404). */
+    METRICS_TOKEN: z.string().min(24).optional(),
     LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   })
   .superRefine((env, ctx) => {

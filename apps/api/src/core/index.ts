@@ -20,6 +20,8 @@ export * from './security/token.service';
 export * from './tenancy/host';
 export * from './logging/logger.config';
 export * from './pagination';
+export * from './observability/tenant-metrics';
+export * from './observability/metrics.middleware';
 export * from './portability/tenant-export';
 export * from './ports';
 export * from './core.module';

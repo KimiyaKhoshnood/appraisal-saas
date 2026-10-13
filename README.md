@@ -26,7 +26,7 @@ apps/api            NestJS API (modular monolith)
   experiments/        E2–E6 measurement scripts
 apps/web            React + Vite + TanStack Query + Tailwind 4
 packages/contracts  Zod schemas, permission/feature/plan catalogs, policy resolution (shared)
-docs/               architecture, ADR-001…014, experiment results
+docs/               architecture, ADR-001…015, experiment results
 ```
 
 ## Run it locally (native)
@@ -101,6 +101,7 @@ steps against a PostgreSQL 18 service; it has not run yet because nothing has be
 | FE-01/02/03 theming, navigation, states | `apps/web` | `web.spec.ts`, manual demo |
 | DP-01 tenant data export (portability) | `core/portability`, `portability/`, per-module registration | `portability.e2e.spec.ts` (ADR-013) |
 | DP-02 no lost updates (ETag / If-Match → 412) | `core/http/conditional.ts`, `evaluation/` | `concurrency.e2e.spec.ts` (ADR-014) |
+| NF-16 per-tenant observability (RED metrics, bounded labels) | `core/observability`, `GET /api/metrics`, `GET /api/platform/tenant-health`, console health strip | `tenant-metrics.spec.ts`, `observability.e2e.spec.ts` (ADR-015) |
 | NF-01 no cross-tenant leak | five layers | E1 matrix (both modes) |
 | NF-02 fail-closed RLS | policy with `NULLIF(current_setting)` | `rls.spec.ts` |
 | NF-03 / T14 no RLS bypass at runtime | `db-bootstrap.ts`, grants | `rls.spec.ts` |

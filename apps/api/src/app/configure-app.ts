@@ -3,7 +3,7 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { Logger } from 'nestjs-pino';
-import { API_PREFIX, ENV, isAllowedOrigin, requestContextMiddleware, type Env } from '../core';
+import { API_PREFIX, ENV, TenantMetrics, isAllowedOrigin, metricsMiddleware, requestContextMiddleware, type Env } from '../core';
 
 /** Shared by main.ts and the e2e tests so both run exactly the same HTTP pipeline. */
 export function configureApp(app: INestApplication, options: { logger?: boolean } = {}): INestApplication {
@@ -14,6 +14,7 @@ export function configureApp(app: INestApplication, options: { logger?: boolean 
   express.disable('x-powered-by');
   // First middleware: opens the per-request AsyncLocalStorage scope.
   app.use(requestContextMiddleware);
+  app.use(metricsMiddleware(app.get(TenantMetrics)));
   app.use(helmet());
   app.use(cookieParser());
   express.useBodyParser('json', { limit: '100kb' });

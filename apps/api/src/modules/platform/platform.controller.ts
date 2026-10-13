@@ -11,7 +11,7 @@ import {
   type TokenResponse,
 } from '@appraisal/contracts';
 import type { Request, Response } from 'express';
-import { ENV, IdParam, NotFoundError, PlatformRoute, Public, ValidBody, ValidQuery, classifyHost, type Env } from '../../core';
+import { ENV, IdParam, NotFoundError, PlatformRoute, Public, TenantMetrics, ValidBody, ValidQuery, classifyHost, type Env } from '../../core';
 import { PlatformAuditService } from './platform-audit.service';
 import { PlatformAuthService, type PlatformSession } from './platform-auth.service';
 import { TenantsService } from './tenants.service';
@@ -79,7 +79,18 @@ export class PlatformController {
   constructor(
     private readonly tenants: TenantsService,
     private readonly audit: PlatformAuditService,
+    private readonly metrics: TenantMetrics,
   ) {}
+
+  /**
+   * Operator view of every tenant's traffic over the last minutes (this instance): requests,
+   * 5xx rate, throttled requests, p50/p95 latency. Counts only, never tenant content.
+   */
+  @Get('tenant-health')
+  @PlatformRoute()
+  tenantHealth() {
+    return { windowMinutes: 5, generatedAt: new Date().toISOString(), tenants: this.metrics.health() };
+  }
 
   @Get('tenants')
   @PlatformRoute()

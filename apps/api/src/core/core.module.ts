@@ -5,6 +5,7 @@ import { ENV, loadEnv } from './config/env';
 import { Database } from './database/database.service';
 import { EventBus } from './events/event-bus';
 import { RouteRegistry } from './http/route-registry';
+import { TenantMetrics } from './observability/tenant-metrics';
 import { TenantExportRegistry } from './portability/tenant-export';
 import { TokenService } from './security/token.service';
 
@@ -20,7 +21,8 @@ import { TokenService } from './security/token.service';
     TokenService,
     RouteRegistry,
     TenantExportRegistry,
+    TenantMetrics,
   ],
-  exports: [ENV, Database, EventBus, TokenService, RouteRegistry, TenantExportRegistry],
+  exports: [ENV, Database, EventBus, TokenService, RouteRegistry, TenantExportRegistry, TenantMetrics],
 })
 export class CoreModule {}

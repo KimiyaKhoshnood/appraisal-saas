@@ -1,7 +1,21 @@
-import { Controller, Get, Header, Res, ServiceUnavailableException } from '@nestjs/common';
+import { Controller, Get, Header, Inject, Req, Res, ServiceUnavailableException } from '@nestjs/common';
 import type { MeContext } from '@appraisal/contracts';
-import type { Response } from 'express';
-import { Authenticated, Database, Public, RouteRegistry, SkipRateLimit, TenantContext, buildOpenApi } from '../core';
+import type { Request, Response } from 'express';
+import {
+  Authenticated,
+  Database,
+  ENV,
+  NotFoundError,
+  Public,
+  RouteRegistry,
+  SkipRateLimit,
+  TenantContext,
+  TenantMetrics,
+  buildOpenApi,
+  safeEqualHex,
+  sha256,
+  type Env,
+} from '../core';
 import { ConfigurationService } from '../modules/configuration';
 import { OrgDirectory } from '../modules/organization';
 
@@ -10,7 +24,25 @@ export class SystemController {
   constructor(
     private readonly db: Database,
     private readonly routes: RouteRegistry,
+    private readonly metrics: TenantMetrics,
+    @Inject(ENV) private readonly env: Env,
   ) {}
+
+  /**
+   * Prometheus scrape endpoint. Tenant names are business data, so it needs its own bearer token
+   * (compared in constant time); without METRICS_TOKEN configured it does not exist.
+   */
+  @Get('metrics')
+  @Public()
+  @SkipRateLimit()
+  @Header('Content-Type', 'text/plain; version=0.0.4; charset=utf-8')
+  @Header('Cache-Control', 'no-store')
+  scrape(@Req() req: Request) {
+    const expected = this.env.METRICS_TOKEN;
+    const given = /^Bearer (.+)$/.exec(req.header('authorization') ?? '')?.[1];
+    if (!expected || !given || !safeEqualHex(sha256(given), sha256(expected))) throw new NotFoundError('metrics');
+    return this.metrics.exposition();
+  }
 
   /** Liveness + database reachability (no tenant data). */
   @Get('health')

@@ -20,7 +20,7 @@ import {
   Textarea,
   fadeUp,
 } from '../../shared/ui';
-import { useEvaluation, useEvaluationAction } from './api';
+import { isStale, useEvaluation, useEvaluationAction } from './api';
 import { Journey } from './Journey';
 
 type Draft = Record<string, { score: number | ''; comment: string }>;
@@ -76,7 +76,7 @@ function ScoreRing({ value }: { value: number }) {
 
 function EvaluationView({ e }: { e: EvaluationDetailView }) {
   const { t, formatDateTime } = useI18n();
-  const action = useEvaluationAction(e.id);
+  const action = useEvaluationAction(e.id, e.version);
   const editing: EvaluatorKind | null = e.allowedActions.includes('SAVE_SELF') ? 'SELF' : e.allowedActions.includes('SAVE_MANAGER') ? 'MANAGER' : null;
 
   const initial = useMemo<Draft>(() => {
@@ -218,10 +218,10 @@ function EvaluationView({ e }: { e: EvaluationDetailView }) {
         <div className="mt-6 flex flex-wrap items-center gap-2 border-t border-line pt-5">
           {editing && (
             <>
-              <Button variant="secondary" icon={<Save className="size-4" />} busy={action.isPending && action.variables?.kind === 'save'} onClick={() => run({ kind: 'save', evaluator: editing, body: body() }, t('app.saved'))}>
+              <Button variant="secondary" icon={<Save className="size-4" />} disabled={filled === 0} busy={action.isPending && action.variables?.kind === 'save'} onClick={() => run({ kind: 'save', evaluator: editing, body: body() }, t('app.saved'))}>
                 {t('eval.saveDraft')}
               </Button>
-              <Button icon={<Send className="size-4 rtl:-scale-x-100" />} busy={action.isPending && action.variables?.kind === 'submit'} onClick={() => run({ kind: 'submit', evaluator: editing, body: body() }, t('toast.submitted'))}>
+              <Button icon={<Send className="size-4 rtl:-scale-x-100" />} busy={action.isPending && action.variables?.kind === 'submit'} onClick={() => run({ kind: 'submit', evaluator: editing, body: filled ? body() : {} }, t('toast.submitted'))}>
                 {editing === 'SELF' ? t('eval.submitSelf') : t('eval.submitManager')}
               </Button>
             </>
@@ -255,7 +255,13 @@ function EvaluationView({ e }: { e: EvaluationDetailView }) {
         </AnimatePresence>
         {action.error && (
           <div className="mt-4">
-            <ErrorBox error={action.error} />
+            {isStale(action.error) ? (
+              <p role="alert" className="rounded-xl bg-amber-500/10 px-3 py-2.5 text-sm text-amber-800 dark:text-amber-300">
+                {t('eval.stale')}
+              </p>
+            ) : (
+              <ErrorBox error={action.error} />
+            )}
           </div>
         )}
       </Card>

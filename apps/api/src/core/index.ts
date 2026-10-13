@@ -9,6 +9,7 @@ export * from './events/event-bus';
 export * from './http/problem-details.filter';
 export * from './http/route-registry';
 export * from './http/openapi';
+export * from './http/conditional';
 export * from './http/validation';
 export * from './cache/ttl-cache';
 export * from './rate-limit/token-bucket';

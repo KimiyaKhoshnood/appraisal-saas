@@ -59,6 +59,15 @@ export class ConflictError extends AppError {
   }
 }
 
+/** RFC 9110: the client's `If-Match` no longer describes the resource; it must reload first. */
+export class PreconditionFailedError extends AppError {
+  readonly status = 412;
+  readonly code = 'PRECONDITION_FAILED';
+  constructor(readonly currentVersion: number) {
+    super('The resource changed since you loaded it; reload to see the current version');
+  }
+}
+
 /** A well-formed request that breaks a business rule (e.g. an illegal state transition). */
 export class BusinessRuleError extends AppError {
   readonly status = 422;

@@ -1,6 +1,6 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { EvaluationDetailView, EvaluationSummaryView, Page, SaveScoresInput } from '@appraisal/contracts';
-import { tenantApi } from '../../shared/lib/api';
+import { ApiError, tenantApi } from '../../shared/lib/api';
 import { qk } from '../../shared/lib/query-keys';
 
 export type EvaluationScope = 'mine' | 'team' | 'approvals' | 'all';
@@ -22,27 +22,36 @@ export function useEvaluation(id: string) {
 
 type Action =
   | { kind: 'save'; evaluator: 'SELF' | 'MANAGER'; body: SaveScoresInput }
-  | { kind: 'submit'; evaluator: 'SELF' | 'MANAGER'; body: SaveScoresInput }
+  | { kind: 'submit'; evaluator: 'SELF' | 'MANAGER'; body: Partial<SaveScoresInput> }
   | { kind: 'approve'; comment?: string }
   | { kind: 'reject'; reason: string };
 
-/** Every transition of the state machine; the server re-validates each against the cycle's policy. */
-export function useEvaluationAction(id: string) {
+/**
+ * Every transition of the state machine; the server re-validates each against the cycle's policy.
+ * Each write sends the version this screen shows (`If-Match`): if someone changed the evaluation
+ * meanwhile the server answers 412 and nothing is overwritten (see `isStale`).
+ */
+export function useEvaluationAction(id: string, version: number) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (a: Action) => {
       const base = `/api/evaluations/${id}`;
       const who = 'evaluator' in a ? (a.evaluator === 'SELF' ? 'self' : 'manager') : '';
+      const ifMatch = { 'If-Match': `"v${version}"` };
       switch (a.kind) {
         case 'save':
-          return tenantApi.put<EvaluationDetailView>(`${base}/${who}-scores`, a.body);
+          return tenantApi.put<EvaluationDetailView>(`${base}/${who}-scores`, a.body, ifMatch);
         case 'submit':
-          return tenantApi.post<EvaluationDetailView>(`${base}/${who}-submit`, a.body);
+          return tenantApi.post<EvaluationDetailView>(`${base}/${who}-submit`, a.body, ifMatch);
         case 'approve':
-          return tenantApi.post<EvaluationDetailView>(`${base}/approve`, a.comment ? { comment: a.comment } : {});
+          return tenantApi.post<EvaluationDetailView>(`${base}/approve`, a.comment ? { comment: a.comment } : {}, ifMatch);
         case 'reject':
-          return tenantApi.post<EvaluationDetailView>(`${base}/reject`, { reason: a.reason });
+          return tenantApi.post<EvaluationDetailView>(`${base}/reject`, { reason: a.reason }, ifMatch);
       }
+    },
+    onError: (err) => {
+      // Someone else changed it: show the current version instead of the stale one.
+      if (isStale(err)) void qc.invalidateQueries({ queryKey: qk.evaluations.detail(id) });
     },
     onSuccess: (data) => {
       qc.setQueryData(qk.evaluations.detail(id), data);
@@ -51,3 +60,5 @@ export function useEvaluationAction(id: string) {
     },
   });
 }
+
+export const isStale = (err: unknown) => err instanceof ApiError && err.status === 412;

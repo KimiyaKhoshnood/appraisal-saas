@@ -70,11 +70,11 @@ export class ApiClient {
   get<T>(path: string): Promise<T> {
     return this.request<T>('GET', path);
   }
-  post<T>(path: string, body?: Json): Promise<T> {
-    return this.request<T>('POST', path, body ?? {});
+  post<T>(path: string, body?: Json, headers?: Record<string, string>): Promise<T> {
+    return this.request<T>('POST', path, body ?? {}, headers);
   }
-  put<T>(path: string, body: Json): Promise<T> {
-    return this.request<T>('PUT', path, body);
+  put<T>(path: string, body: Json, headers?: Record<string, string>): Promise<T> {
+    return this.request<T>('PUT', path, body, headers);
   }
   patch<T>(path: string, body: Json): Promise<T> {
     return this.request<T>('PATCH', path, body);
@@ -89,16 +89,16 @@ export class ApiClient {
     return res.blob();
   }
 
-  private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
-    const res = await this.fetchWithAuth(method, path, body);
+  private async request<T>(method: string, path: string, body?: unknown, headers?: Record<string, string>): Promise<T> {
+    const res = await this.fetchWithAuth(method, path, body, headers);
     if (!res.ok) throw await toError(res);
     if (res.status === 204) return undefined as T;
     return (await res.json()) as T;
   }
 
-  private async fetchWithAuth(method: string, path: string, body?: unknown): Promise<Response> {
-    let res = await this.send(method, path, body, true);
-    if (res.status === 401 && (await this.refresh())) res = await this.send(method, path, body, true);
+  private async fetchWithAuth(method: string, path: string, body?: unknown, headers?: Record<string, string>): Promise<Response> {
+    let res = await this.send(method, path, body, true, headers);
+    if (res.status === 401 && (await this.refresh())) res = await this.send(method, path, body, true, headers);
     if (res.status === 401) this.onSessionLost();
     return res;
   }
@@ -109,8 +109,8 @@ export class ApiClient {
     return res.status === 204 ? undefined : res.json();
   }
 
-  private send(method: string, path: string, body: unknown, auth: boolean): Promise<Response> {
-    const headers: Record<string, string> = { Accept: 'application/json' };
+  private send(method: string, path: string, body: unknown, auth: boolean, extra: Record<string, string> = {}): Promise<Response> {
+    const headers: Record<string, string> = { Accept: 'application/json', ...extra };
     if (body !== undefined) headers['Content-Type'] = 'application/json';
     if (auth && this.accessToken) headers.Authorization = `Bearer ${this.accessToken}`;
     return fetch(path, {

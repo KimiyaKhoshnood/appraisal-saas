@@ -135,4 +135,6 @@ export interface EvaluationDetailView extends EvaluationSummaryView {
   allowedActions: EvaluationAction[];
   /** False when the policy hides the result from the employee (MANAGERS_ONLY). */
   resultVisibleToEmployee: boolean;
+  /** Optimistic-concurrency version, also sent as `ETag: "v<version>"`; send it back in `If-Match`. */
+  version: number;
 }

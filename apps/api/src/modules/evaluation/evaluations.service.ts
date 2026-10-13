@@ -16,6 +16,7 @@ import {
   EventBus,
   ForbiddenError,
   NotFoundError,
+  PreconditionFailedError,
   TenantContext,
   ValidationFailedError,
   keysetArgs,
@@ -47,6 +48,14 @@ function canRead(e: { employeeId: string; managerId: string | null; status: Eval
   if (access.permissions.has('evaluation:read-all')) return true;
   if (access.permissions.has('evaluation:approve') && (APPROVAL_STATUSES.includes(e.status) || e.status === 'PUBLISHED')) return true;
   return false;
+}
+
+/**
+ * `If-Match` precondition, checked after the read-side authorisation (a stranger still gets 404,
+ * never a 412 that would confirm the evaluation exists).
+ */
+function assertVersion(e: { version: number }, expected: number | undefined) {
+  if (expected !== undefined && e.version !== expected) throw new PreconditionFailedError(e.version);
 }
 
 @Injectable()
@@ -111,10 +120,11 @@ export class EvaluationsService {
     return this.detail(e, access);
   }
 
-  async saveScores(id: string, evaluator: Evaluator, input: SaveScoresInput): Promise<EvaluationDetailView> {
+  async saveScores(id: string, evaluator: Evaluator, input: SaveScoresInput, expectedVersion?: number): Promise<EvaluationDetailView> {
     const access = TenantContext.requireAccess();
     return this.db.transaction(async (tx) => {
       const e = await this.load(id, access);
+      assertVersion(e, expectedVersion);
       const policy = parsePolicySnapshot(e.cycle.policySnapshot);
       this.assertCanEdit(e, evaluator, policy, access);
       this.validateScores(e, policy, input);
@@ -124,11 +134,12 @@ export class EvaluationsService {
     });
   }
 
-  async submit(id: string, evaluator: Evaluator, input?: SaveScoresInput): Promise<EvaluationDetailView> {
+  async submit(id: string, evaluator: Evaluator, input?: SaveScoresInput, expectedVersion?: number): Promise<EvaluationDetailView> {
     const access = TenantContext.requireAccess();
     const action: TransitionAction = evaluator === 'SELF' ? 'SUBMIT_SELF' : 'SUBMIT_MANAGER';
     return this.db.transaction(async (tx) => {
       const e = await this.load(id, access);
+      assertVersion(e, expectedVersion);
       const policy = parsePolicySnapshot(e.cycle.policySnapshot);
       this.assertCanEdit(e, evaluator, policy, access);
       if (input) {
@@ -160,19 +171,25 @@ export class EvaluationsService {
     });
   }
 
-  async approve(id: string, comment?: string): Promise<EvaluationDetailView> {
-    return this.decide(id, 'APPROVED', comment ?? null);
+  async approve(id: string, comment?: string, expectedVersion?: number): Promise<EvaluationDetailView> {
+    return this.decide(id, 'APPROVED', comment ?? null, expectedVersion);
   }
 
-  async reject(id: string, reason: string): Promise<EvaluationDetailView> {
-    return this.decide(id, 'REJECTED', reason);
+  async reject(id: string, reason: string, expectedVersion?: number): Promise<EvaluationDetailView> {
+    return this.decide(id, 'REJECTED', reason, expectedVersion);
   }
 
-  private async decide(id: string, decision: 'APPROVED' | 'REJECTED', comment: string | null): Promise<EvaluationDetailView> {
+  private async decide(
+    id: string,
+    decision: 'APPROVED' | 'REJECTED',
+    comment: string | null,
+    expectedVersion: number | undefined,
+  ): Promise<EvaluationDetailView> {
     const access = TenantContext.requireAccess();
     const tenantId = TenantContext.requireTenantId();
     return this.db.transaction(async (tx) => {
       const e = await this.load(id, access);
+      assertVersion(e, expectedVersion);
       const policy = parsePolicySnapshot(e.cycle.policySnapshot);
       this.assertCycleActive(e);
       const strategy = approvalStrategy(policy.approvalStrategy);
@@ -358,6 +375,7 @@ export class EvaluationsService {
           })),
       allowedActions: this.allowedActions(e, policy, access),
       resultVisibleToEmployee: policy.resultVisibility === 'AFTER_PUBLISH',
+      version: e.version,
     };
   }
 

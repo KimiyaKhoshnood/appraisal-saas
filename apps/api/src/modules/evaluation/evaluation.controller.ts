@@ -1,4 +1,4 @@
-import { Controller, Get, HttpCode, Post, Put } from '@nestjs/common';
+import { Controller, Get, HttpCode, Post, Put, UseInterceptors } from '@nestjs/common';
 import {
   approvalDecisionSchema,
   createCycleSchema,
@@ -12,7 +12,7 @@ import {
   type SaveScoresInput,
 } from '@appraisal/contracts';
 import { z } from 'zod';
-import { Authenticated, IdParam, RequirePermission, TenantContext, ValidBody, ValidQuery } from '../../core';
+import { Authenticated, IdParam, IfMatch, RequirePermission, TenantContext, ValidBody, ValidQuery, VersionETagInterceptor } from '../../core';
 import { CyclesService } from './cycles.service';
 import { EvaluationReadModel } from './evaluation-read-model';
 import { EvaluationsService } from './evaluations.service';
@@ -66,8 +66,11 @@ export class CyclesController {
  * Evaluation actions are @Authenticated rather than permission-gated at the route: whether you
  * may act depends on the record (your own? your report's?), which only the service can decide.
  * The service still checks the matching permission (evaluation:self / manage / approve).
+ *
+ * Single-evaluation responses carry an ETag; every write honours `If-Match` (412 when stale).
  */
 @Controller('evaluations')
+@UseInterceptors(VersionETagInterceptor)
 export class EvaluationsController {
   constructor(private readonly evaluations: EvaluationsService) {}
 
@@ -85,42 +88,42 @@ export class EvaluationsController {
 
   @Put(':id/self-scores')
   @Authenticated()
-  saveSelf(@IdParam() id: string, @ValidBody(saveScoresSchema) body: SaveScoresInput) {
-    return this.evaluations.saveScores(id, 'SELF', body);
+  saveSelf(@IdParam() id: string, @ValidBody(saveScoresSchema) body: SaveScoresInput, @IfMatch() version?: number) {
+    return this.evaluations.saveScores(id, 'SELF', body, version);
   }
 
   @Post(':id/self-submit')
   @HttpCode(200)
   @Authenticated()
-  submitSelf(@IdParam() id: string, @ValidBody(optionalScores) body: Partial<SaveScoresInput>) {
-    return this.evaluations.submit(id, 'SELF', body.scores ? { scores: body.scores } : undefined);
+  submitSelf(@IdParam() id: string, @ValidBody(optionalScores) body: Partial<SaveScoresInput>, @IfMatch() version?: number) {
+    return this.evaluations.submit(id, 'SELF', body.scores ? { scores: body.scores } : undefined, version);
   }
 
   @Put(':id/manager-scores')
   @Authenticated()
-  saveManager(@IdParam() id: string, @ValidBody(saveScoresSchema) body: SaveScoresInput) {
-    return this.evaluations.saveScores(id, 'MANAGER', body);
+  saveManager(@IdParam() id: string, @ValidBody(saveScoresSchema) body: SaveScoresInput, @IfMatch() version?: number) {
+    return this.evaluations.saveScores(id, 'MANAGER', body, version);
   }
 
   @Post(':id/manager-submit')
   @HttpCode(200)
   @Authenticated()
-  submitManager(@IdParam() id: string, @ValidBody(optionalScores) body: Partial<SaveScoresInput>) {
-    return this.evaluations.submit(id, 'MANAGER', body.scores ? { scores: body.scores } : undefined);
+  submitManager(@IdParam() id: string, @ValidBody(optionalScores) body: Partial<SaveScoresInput>, @IfMatch() version?: number) {
+    return this.evaluations.submit(id, 'MANAGER', body.scores ? { scores: body.scores } : undefined, version);
   }
 
   @Post(':id/approve')
   @HttpCode(200)
   @RequirePermission('evaluation:approve')
-  approve(@IdParam() id: string, @ValidBody(approvalDecisionSchema) body: z.infer<typeof approvalDecisionSchema>) {
-    return this.evaluations.approve(id, body.comment);
+  approve(@IdParam() id: string, @ValidBody(approvalDecisionSchema) body: z.infer<typeof approvalDecisionSchema>, @IfMatch() version?: number) {
+    return this.evaluations.approve(id, body.comment, version);
   }
 
   @Post(':id/reject')
   @HttpCode(200)
   @RequirePermission('evaluation:approve')
-  reject(@IdParam() id: string, @ValidBody(rejectionSchema) body: z.infer<typeof rejectionSchema>) {
-    return this.evaluations.reject(id, body.reason);
+  reject(@IdParam() id: string, @ValidBody(rejectionSchema) body: z.infer<typeof rejectionSchema>, @IfMatch() version?: number) {
+    return this.evaluations.reject(id, body.reason, version);
   }
 }
 

@@ -1,4 +1,5 @@
-import { Module } from '@nestjs/common';
+import { Module, type OnModuleInit } from '@nestjs/common';
+import { TenantExportRegistry } from '../../core';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { AuthzService } from './authz.service';
@@ -14,7 +15,19 @@ import { UsersService } from './users.service';
   providers: [AuthService, AuthzService, GrantPolicy, UsersService, RolesService, UserDirectory, IamProvisioning],
   exports: [AuthzService, UserDirectory, IamProvisioning],
 })
-export class IamModule {}
+export class IamModule implements OnModuleInit {
+  constructor(private readonly exportRegistry: TenantExportRegistry) {}
+
+  /** Tables this module owns, for the tenant data export. */
+  onModuleInit(): void {
+    const registry = this.exportRegistry;
+    // refresh_token is not exported: session secrets are not the organisation's data.
+    registry.register({ module: 'iam', table: 'app_user', omit: ['password_hash'] });
+    registry.register({ module: 'iam', table: 'role' });
+    registry.register({ module: 'iam', table: 'role_permission' });
+    registry.register({ module: 'iam', table: 'user_role' });
+  }
+}
 
 export { AuthzService, type UserAccess } from './authz.service';
 export { UserDirectory, IamProvisioning, type DirectoryUser } from './user-directory';

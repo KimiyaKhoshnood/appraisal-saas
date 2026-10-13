@@ -5,6 +5,7 @@ import { ENV, loadEnv } from './config/env';
 import { Database } from './database/database.service';
 import { EventBus } from './events/event-bus';
 import { RouteRegistry } from './http/route-registry';
+import { TenantExportRegistry } from './portability/tenant-export';
 import { TokenService } from './security/token.service';
 
 /** tenancy-core: shared kernel. Owns no tables and imports no domain module. */
@@ -18,7 +19,8 @@ import { TokenService } from './security/token.service';
     JwtService,
     TokenService,
     RouteRegistry,
+    TenantExportRegistry,
   ],
-  exports: [ENV, Database, EventBus, TokenService, RouteRegistry],
+  exports: [ENV, Database, EventBus, TokenService, RouteRegistry, TenantExportRegistry],
 })
 export class CoreModule {}

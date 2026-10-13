@@ -1,4 +1,5 @@
-import { Module } from '@nestjs/common';
+import { Module, type OnModuleInit } from '@nestjs/common';
+import { TenantExportRegistry } from '../../core';
 import { ConfigurationModule } from '../configuration';
 import { OrganizationModule } from '../organization';
 import { CyclesService } from './cycles.service';
@@ -13,6 +14,18 @@ import { EvaluationsService } from './evaluations.service';
   providers: [CyclesService, EvaluationsService, EvaluationReadModel],
   exports: [EvaluationReadModel],
 })
-export class EvaluationModule {}
+export class EvaluationModule implements OnModuleInit {
+  constructor(private readonly exportRegistry: TenantExportRegistry) {}
+
+  /** Tables this module owns, for the tenant data export. */
+  onModuleInit(): void {
+    const registry = this.exportRegistry;
+    registry.register({ module: 'evaluation', table: 'evaluation_cycle' });
+    registry.register({ module: 'evaluation', table: 'competency' });
+    registry.register({ module: 'evaluation', table: 'evaluation' });
+    registry.register({ module: 'evaluation', table: 'evaluation_score' });
+    registry.register({ module: 'evaluation', table: 'approval_record' });
+  }
+}
 
 export { EvaluationReadModel, type CycleStats } from './evaluation-read-model';

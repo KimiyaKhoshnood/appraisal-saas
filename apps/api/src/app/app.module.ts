@@ -21,6 +21,7 @@ import { ConfigurationModule } from '../modules/configuration';
 import { EvaluationModule } from '../modules/evaluation';
 import { IamModule } from '../modules/iam';
 import { OrganizationModule } from '../modules/organization';
+import { PortabilityModule } from '../modules/portability';
 import { PlatformAuthService, PlatformModule, TenantDirectoryService } from '../modules/platform';
 import { ReportingModule } from '../modules/reporting';
 import { AccessContextLoaderImpl } from './access-context.loader';
@@ -41,6 +42,7 @@ import { MeController, SystemController } from './system.controller';
     PlatformModule,
     EvaluationModule,
     ReportingModule,
+    PortabilityModule,
   ],
   controllers: [SystemController, MeController],
   providers: [

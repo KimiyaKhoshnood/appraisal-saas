@@ -70,6 +70,8 @@ export type Db = Omit<ExtendedClient, '$connect' | '$disconnect' | '$on' | '$tra
 export interface TransactionOptions {
   isolationLevel?: Prisma.TransactionIsolationLevel;
   timeoutMs?: number;
+  /** `SET TRANSACTION READ ONLY`: PostgreSQL rejects any write, whatever the code tries. */
+  readOnly?: boolean;
 }
 
 @Injectable()
@@ -114,6 +116,8 @@ export class Database implements OnModuleDestroy {
 
     return this.extended.$transaction(
       async (tx) => {
+        // Must be the first statement of the transaction.
+        if (options.readOnly) await tx.$executeRaw`SET TRANSACTION READ ONLY`;
         await tx.$executeRaw`SELECT set_config('app.tenant_id', ${tenantId}, true),
                                     set_config('statement_timeout', ${String(this.statementTimeoutMs)}, true)`;
         const child = { ...store!, tx };

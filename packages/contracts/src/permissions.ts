@@ -22,6 +22,7 @@ export const PERMISSIONS = {
   'evaluation:read-all': 'Read every evaluation in the organisation',
   'report:read': 'Read summary reports',
   'analytics:read': 'Read advanced analytics',
+  'data:export': 'Download a full export of the organisation data',
 } as const;
 
 export type Permission = keyof typeof PERMISSIONS;

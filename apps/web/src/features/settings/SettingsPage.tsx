@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Palette, SlidersHorizontal, ToggleLeft } from 'lucide-react';
+import { ArrowDownToLine, DatabaseBackup, Palette, SlidersHorizontal, ToggleLeft } from 'lucide-react';
 import {
   APPROVAL_STRATEGIES,
   CYCLE_CADENCES,
@@ -31,6 +31,7 @@ export default function SettingsPage() {
         <FeaturesCard />
         <PolicyCard />
       </div>
+      <ExportCard />
     </Page>
   );
 }
@@ -272,6 +273,71 @@ function PolicyCard() {
           </div>
         )}
       </QueryState>
+    </Card>
+  );
+}
+
+interface ExportManifest {
+  manifest: { section: string; rows: number; sha256: string }[];
+  tenant: { slug: string };
+  exportedAt: string;
+}
+
+/** Data portability: the whole organisation as one JSON file (tenant admins, `data:export`). */
+function ExportCard() {
+  const { t, formatNumber } = useI18n();
+  const { can } = useMe();
+  const download = useMutation({
+    mutationFn: async () => {
+      const blob = await tenantApi.download('/api/tenant/export');
+      const body = JSON.parse(await blob.text()) as ExportManifest;
+      const url = URL.createObjectURL(blob);
+      Object.assign(document.createElement('a'), { href: url, download: `${body.tenant.slug}-export-${body.exportedAt.slice(0, 10)}.json` }).click();
+      URL.revokeObjectURL(url);
+      return body;
+    },
+    onSuccess: (body) =>
+      toast.success(
+        t('settings.exportDone', {
+          rows: formatNumber(body.manifest.reduce((n, m) => n + m.rows, 0)),
+          sections: formatNumber(body.manifest.length),
+        }),
+      ),
+    onError: () => toast.error(t('app.error')),
+  });
+  if (!can('data:export')) return null;
+  return (
+    <Card
+      title={t('settings.export')}
+      icon={<DatabaseBackup className="size-4" />}
+      actions={
+        <Button variant="secondary" busy={download.isPending} onClick={() => download.mutate()} icon={<ArrowDownToLine className="size-4" />}>
+          {t('settings.exportButton')}
+        </Button>
+      }
+    >
+      <p className="max-w-3xl text-sm text-muted">{t('settings.exportNote')}</p>
+      {download.data && (
+        <motion.ul
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          className="mt-4 grid gap-x-6 gap-y-1.5 overflow-hidden text-xs sm:grid-cols-2 xl:grid-cols-3"
+        >
+          {download.data.manifest.map((m) => (
+            <li key={m.section} className="flex items-center justify-between gap-3 rounded-lg bg-surface-2 px-3 py-1.5">
+              <span className="truncate font-medium text-fg" dir="ltr">
+                {m.section}
+              </span>
+              <span className="flex shrink-0 items-center gap-2 tabular text-muted" dir="ltr">
+                {formatNumber(m.rows)}
+                <code className="text-[10px] opacity-70" title={m.sha256}>
+                  {m.sha256.slice(0, 8)}
+                </code>
+              </span>
+            </li>
+          ))}
+        </motion.ul>
+      )}
     </Card>
   );
 }

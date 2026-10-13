@@ -148,6 +148,10 @@ const en = {
   'roles.users': '{n} users',
   'roles.customOff': 'Custom roles are not enabled for your organisation.',
 
+  'settings.export': 'Your organisation’s data',
+  'settings.exportNote': 'Download everything your organisation stores here as one JSON file: users, roles, structure, cycles, evaluations and the audit log. Password hashes and sessions are never included. Each section carries a SHA-256 checksum.',
+  'settings.exportButton': 'Download export',
+  'settings.exportDone': 'Export downloaded: {rows} records in {sections} sections',
   'settings.branding': 'Branding',
   'settings.appName': 'Application name',
   'settings.logoUrl': 'Logo URL',
@@ -338,6 +342,10 @@ const fa: Record<MessageKey, string> = {
   'roles.users': '{n} کاربر',
   'roles.customOff': 'نقش سفارشی برای سازمان شما فعال نیست.',
 
+  'settings.export': 'داده‌های سازمان شما',
+  'settings.exportNote': 'همه‌ی داده‌های سازمان را در یک فایل JSON دریافت کنید: کاربران، نقش‌ها، ساختار، دوره‌ها، ارزیابی‌ها و لاگ ممیزی. هش رمزها و نشست‌ها هرگز در آن نیستند. هر بخش یک چک‌سام SHA-256 دارد.',
+  'settings.exportButton': 'دریافت خروجی',
+  'settings.exportDone': 'خروجی دریافت شد: {rows} رکورد در {sections} بخش',
   'settings.branding': 'برندینگ',
   'settings.appName': 'نام برنامه',
   'settings.logoUrl': 'آدرس لوگو',

@@ -19,14 +19,14 @@ database, isolated in five layers down to PostgreSQL itself, and differing only 
 ```
 apps/api            NestJS API (modular monolith)
   src/core            tenancy-core: context, database, guards, events, errors (owns no table)
-  src/modules/*       platform · iam · configuration · organization · evaluation · reporting · audit
+  src/modules/*       platform · iam · configuration · organization · evaluation · reporting · portability · audit
   src/app             composition root (ports → implementations, guard order)
   prisma/             schema, migrations (DDL + RLS/grants), catalog sync, seed
   test/               unit · integration (real PostgreSQL) · e2e · isolation matrix
   experiments/        E2–E6 measurement scripts
 apps/web            React + Vite + TanStack Query + Tailwind 4
 packages/contracts  Zod schemas, permission/feature/plan catalogs, policy resolution (shared)
-docs/               architecture, ADR-001…012, experiment results
+docs/               architecture, ADR-001…013, experiment results
 ```
 
 ## Run it locally (native)
@@ -99,6 +99,7 @@ steps against a PostgreSQL 18 service; it has not run yet because nothing has be
 | RP-01/02/03 reports, CSV, analytics | `reporting/` (feature-gated) | `evaluation.e2e.spec.ts` |
 | AD-01/02/03 audit, security events, append-only | `audit/`, migration triggers + grants | `rls.spec.ts`, e2e |
 | FE-01/02/03 theming, navigation, states | `apps/web` | `web.spec.ts`, manual demo |
+| DP-01 tenant data export (portability) | `core/portability`, `portability/`, per-module registration | `portability.e2e.spec.ts` (ADR-013) |
 | NF-01 no cross-tenant leak | five layers | E1 matrix (both modes) |
 | NF-02 fail-closed RLS | policy with `NULLIF(current_setting)` | `rls.spec.ts` |
 | NF-03 / T14 no RLS bypass at runtime | `db-bootstrap.ts`, grants | `rls.spec.ts` |

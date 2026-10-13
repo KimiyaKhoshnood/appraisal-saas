@@ -11,6 +11,7 @@ const ALLOWED = {
   platform: ['iam', 'configuration', 'audit'],
   evaluation: ['configuration', 'organization', 'audit'],
   reporting: ['evaluation', 'configuration'],
+  portability: [],
 };
 
 const moduleRules = Object.entries(ALLOWED).map(([mod, allowed]) => ({

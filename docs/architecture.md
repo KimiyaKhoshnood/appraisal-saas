@@ -81,7 +81,8 @@ flowchart BT
   evaluation --> audit
   reporting --> evaluation
   reporting --> configuration
-  app["composition root (src/app)"] --> platform & evaluation & reporting
+  portability --> core
+  app["composition root (src/app)"] --> platform & evaluation & reporting & portability
 ```
 
 | Module | Owns | Public API (index.ts) |
@@ -92,6 +93,7 @@ flowchart BT
 | organization | department, employee_profile | OrgDirectory |
 | evaluation | evaluation_cycle, competency, evaluation, evaluation_score, approval_record | EvaluationReadModel |
 | reporting | none (reads through evaluation) | n/a |
+| portability | none (tables declared by each owner in core's `TenantExportRegistry`, ADR-013) | n/a |
 | audit | audit_log | sanitizeMetadata |
 
 Enforced by `apps/api/.dependency-cruiser.cjs` (no cycles, `index.ts` only, allowed-edge table,
@@ -218,7 +220,9 @@ apps/web/src
 ## 9. Known limitations
 
 - Rate limits are per instance (R replicas ⇒ up to R × the budget); Redis only when exactness matters.
-- Per-tenant restore requires a filtered export (cost of the shared schema).
+- Per-tenant **export** exists (ADR-013: RLS-only, one read-only snapshot, checksummed manifest);
+  per-tenant **restore** into a fresh tenant is not implemented yet, and the export is built in
+  memory (streaming NDJSON is the growth path for very large tenants).
 - Users belong to exactly one tenant; SSO/SAML, e-mail delivery, file uploads, custom domains out of scope.
 - Prisma 7's adapter executes some relation sub-queries concurrently inside a transaction, which
   `pg` 8 reports as a deprecation warning; harmless today, to be revisited with `pg` 9.
